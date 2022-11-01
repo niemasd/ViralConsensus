@@ -24,7 +24,7 @@ HTSLIB_A=htslib/libhts.a
 LIBS=-llzma -lbz2 -lz -lcurl -pthread
 
 # relevant constants
-CPP_FILES=main.cpp argparse.cpp
+CPP_FILES=main.cpp argparse.cpp count.cpp
 HEADER_FILES=argparse.h
 GLOBAL_DEPS=$(CPP_FILES) $(HEADER_FILES)
 EXE=viral_consensus_mp

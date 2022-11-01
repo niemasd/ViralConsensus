@@ -1,6 +1,6 @@
+#include "argparse.h"
 #include <cstring>
 #include <unistd.h>
-#include "argparse.h"
 
 args_t parse_args(int const argc, char** const argv) {
     // check for -h or --help

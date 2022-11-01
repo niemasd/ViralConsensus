@@ -20,6 +20,8 @@ HTSLIB=hts-$(LIBHTS_SOVERSION).dll
 else
 HTSLIB=libhts.so
 endif
+HTSLIB_A=htslib/libhts.a
+LIBS=-llzma -lbz2 -lz -lcurl -pthread
 
 # relevant constants
 CPP_FILES=main.cpp argparse.cpp
@@ -31,10 +33,10 @@ DEBUG_EXE=$(EXE)_$(DEBUG_SUFFIX)
 
 # compile
 all: $(EXE)
-$(EXE): $(GLOBAL_DEPS) htslib/libhts.a
-	$(CXX) $(RELEASEFLAGS) -o $(EXE) $(CPP_FILES)
+$(EXE): $(GLOBAL_DEPS) $(HTSLIB_A)
+	$(CXX) $(RELEASEFLAGS) $(INCLUDE) -o $(EXE) $(CPP_FILES) $(HTSLIB_A) $(LIBS)
 debug: $(GLOBAL_DEPS)
-	$(CXX) $(DEBUGFLAGS) -o $(DEBUG_EXE) $(CPP_FILES)
+	$(CXX) $(DEBUGFLAGS) $(INCLUDE) -o $(DEBUG_EXE) $(CPP_FILES) $(HTSLIB_A) $(LIBS)
 clean:
 	$(RM) $(EXE) $(DEBUG_EXE) *.o
 htslib/Makefile:

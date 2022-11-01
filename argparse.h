@@ -4,7 +4,7 @@
 #include <iostream>
 
 // struct to store program args
-struct args {
+struct args_t {
     char* in_reads_fn;       // input reads filename (CRAM/BAM/SAM)
     char* in_ref_fn;         // input reference genome filename (FASTA)
     char* out_pos_counts_fn; // output position counts filename
@@ -13,10 +13,10 @@ struct args {
 };
 
 // parse user args
-args parse_args(int const argc, char** const argv);
+args_t parse_args(int const argc, char** const argv);
 
 // print user args (for debugging)
-void print_args(args const & user_args);
+void print_args(args_t const & user_args);
 
 // print usage
 void print_usage(const char* const exe_name, std::ostream & out);

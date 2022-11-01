@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "argparse.h"
 
-args parse_args(int const argc, char** const argv) {
+args_t parse_args(int const argc, char** const argv) {
     // check for -h or --help
     for(int i = 1; i < argc; ++i) {
         if(strcmp(argv[i],"-h") == 0 || strcmp(argv[i],"--help") == 0) {
@@ -14,7 +14,7 @@ args parse_args(int const argc, char** const argv) {
     if(argc != 6) {
         print_usage(argv[0], std::cerr); exit(1);
     }
-    args user_args;
+    args_t user_args;
     user_args.in_reads_fn = argv[1];
     user_args.in_ref_fn = argv[2];
     user_args.out_pos_counts_fn = argv[3];
@@ -26,7 +26,7 @@ args parse_args(int const argc, char** const argv) {
     return user_args;
 }
 
-void print_args(args const & user_args) {
+void print_args(args_t const & user_args) {
     std::cout << "in_reads_fn: " << user_args.in_reads_fn << std::endl
               << "in_ref_fn: " << user_args.in_ref_fn << std::endl
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl

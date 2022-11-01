@@ -1,3 +1,7 @@
+# executables
+viral_consensus_mp
+viral_consensus_mp_debug
+
 # Prerequisites
 *.d
 

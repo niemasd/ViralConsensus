@@ -3,9 +3,6 @@
 #include <cstring>
 #include <unistd.h>
 
-// definitions and constants
-std::array<const char* const, 4> const HELP_ARG_STRINGS = {"-h", "--help", "-help", "help"};
-
 args_t parse_args(int const argc, char** const argv) {
     // check for -h or --help first
     for(int i = 1; i < argc; ++i) {
@@ -47,6 +44,14 @@ args_t parse_args(int const argc, char** const argv) {
             if(user_args.num_threads < 1) {
                 std::cerr << "Invalid number of threads: " << argv[i] << std::endl; exit(1);
             }
+        } else if(strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--min_qual") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -q/--min_qual expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_qual = atoi(argv[i]);
+            if(user_args.min_qual < 1) {
+                std::cerr << "Invalid minimum base quality: " << argv[1] << std::endl; exit(1);
+            }
         } else {
             std::cerr << "Invalid argument: " << argv[i] << std::endl; print_usage(argv[0], std::cerr); exit(1);
         }
@@ -74,15 +79,17 @@ void print_args(args_t const & user_args) {
               << "in_ref_fn: " << user_args.in_ref_fn << std::endl
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl
               << "out_ins_counts_fn: " << user_args.out_ins_counts_fn << std::endl
-              << "num_threads: " << user_args.num_threads << std::endl;
+              << "num_threads: " << user_args.num_threads << std::endl
+              << "min_qual: " << user_args.min_qual << std::endl;
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts" << std::endl
         << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON)" << std::endl
         << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
+        << "  -q/--min_qual MIN_QUAL                Minimum base quality (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

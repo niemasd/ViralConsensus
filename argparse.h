@@ -1,11 +1,8 @@
 #ifndef ARGPARSE_H
 #define ARGPARSE_H
+#include "common.h"
 #include <cstdint>
 #include <iostream>
-
-// constants/definitions
-#define DEFAULT_NUM_THREADS 1
-#define MESSAGE_MISSING_REQUIRED_ARG "Missing required argument: "
 
 // struct to store program args
 struct args_t {
@@ -14,6 +11,7 @@ struct args_t {
     char* out_pos_counts_fn = nullptr;     // output position counts filename
     char* out_ins_counts_fn = nullptr;     // output insertion counts filename (JSON)
     int num_threads = DEFAULT_NUM_THREADS; // number of threads
+    int min_qual = DEFAULT_MIN_QUAL;       // minimum base quality
 };
 
 // parse user args

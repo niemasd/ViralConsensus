@@ -1,5 +1,6 @@
 #ifndef FASTA_H
 #define FASTA_H
+#include "common.h"
 #include <string>
 
 // load reference genome from fasta

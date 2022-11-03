@@ -3,9 +3,6 @@
 #include <fstream>
 #include <iostream>
 
-// definitions
-#define FASTA_STRING_RESERVE 50000
-
 std::string read_fasta(const char* const in_ref_fn) {
     std::string ref; ref.reserve(FASTA_STRING_RESERVE);
     std::ifstream ref_file(in_ref_fn); std::string line; line.reserve(FASTA_STRING_RESERVE);

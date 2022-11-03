@@ -1,14 +1,12 @@
 #ifndef COUNT_H
 #define COUNT_H
+#include "common.h"
 #include "htslib/htslib/sam.h"
 #include <omp.h>
 #include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-// definitions
-#define COUNT_T unsigned int
 
 // struct to store counts
 struct counts_t {
@@ -17,5 +15,5 @@ struct counts_t {
 };
 
 // compute position and insertion counts
-counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn);
+counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual);
 #endif

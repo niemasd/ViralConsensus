@@ -34,7 +34,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     uint32_t qlen;                               // current read length: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L28
     uint8_t* qual_s;                             // current read quality string: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
-    uint32_t pos_plus_l;                         // store pos + l values for loops in CIGAR parsing
     unsigned int DUMMY_COUNT = 0; // TODO delete
 
     // reserve memory for various helper variabls (avoid resizing)
@@ -77,18 +76,19 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         for(k = 0; k < n_cigar; ++k) {
             op = cigar_p[k] & BAM_CIGAR_MASK;
             l = cigar_p[k] >> BAM_CIGAR_SHIFT;
-            pos_plus_l = pos + l;
 
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
             if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
-                while(pos < pos_plus_l) {
-                    ++(counts.pos_counts[pos++][BASE_TO_NUM[(int)(qseq[qpos++])]]);
+                for(i = pos; i < pos + l; ++i) {
+                    // TODO RESULT IS: (qpos, i, ref_seq[r_idx])
+                    ++qpos;
                 }
+                pos += l;
             }
 
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
             else if(op == BAM_CINS || op == BAM_CSOFT_CLIP || op == BAM_CPAD) {
-                while(pos < pos_plus_l) {
+                for(i = pos; i < pos + l; ++i) {
                     // TODO RESULT IS: (qpos, None, None)
                     ++qpos;
                 }
@@ -96,9 +96,10 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
             // handle deletion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2039-L2050
             else if(op == BAM_CDEL) {
-                while(pos < pos_plus_l) {
-                    // TODO pos IS THE REF INDEX
+                for(i = pos; i < pos + l; ++i) {
+                    // TODO RESULT IS: (None, i, ref_seq[r_idx])
                 }
+                pos += l;
             }
         }
 

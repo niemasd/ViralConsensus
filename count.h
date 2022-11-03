@@ -2,6 +2,7 @@
 #define COUNT_H
 #include "htslib/htslib/sam.h"
 #include <omp.h>
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,7 +12,7 @@
 
 // struct to store counts
 struct counts_t {
-    std::vector<COUNT_T> pos_counts;                     // position base counts
+    std::vector<std::array<COUNT_T, 4>> pos_counts;      // position base counts
     std::unordered_map<std::string, COUNT_T> ins_counts; // insertion counts
 };
 

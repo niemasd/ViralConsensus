@@ -2,10 +2,12 @@
 #include "fasta.h"
 #include <iostream>
 
+// definitions/constants
+const int BASE_TO_NUM[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, -1, 1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, -1, 1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn) {
     // open reference FASTA file and CRAM/BAM/SAM file
     std::string ref = read_fasta(in_ref_fn);
-    std::cout << ref << std::endl;
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
         exit(1); // failed to open file
@@ -25,6 +27,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     }
 
     // compute counts
+    counts_t counts; counts.pos_counts.reserve(ref.length());
     bam1_t* aln = bam_init1(); int ret;
     while(true) {
         // read next alignment record (aln)
@@ -38,6 +41,5 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         // iterate over aligned pairs
         // TODO: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1958-L2066
     }
-    counts_t counts;
     return counts;
 }

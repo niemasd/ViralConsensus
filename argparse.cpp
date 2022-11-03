@@ -1,29 +1,72 @@
 #include "argparse.h"
+#include <array>
 #include <cstring>
 #include <unistd.h>
 
+// definitions and constants
+std::array<const char* const, 4> const HELP_ARG_STRINGS = {"-h", "--help", "-help", "help"};
+
 args_t parse_args(int const argc, char** const argv) {
-    // check for -h or --help
+    // check for -h or --help first
     for(int i = 1; i < argc; ++i) {
-        if(strcmp(argv[i],"-h") == 0 || strcmp(argv[i],"--help") == 0) {
-            print_usage(argv[0], std::cout); exit(0);
+        for(const char* const & s : HELP_ARG_STRINGS) {
+            if(strcmp(argv[i], s) == 0) {
+                print_usage(argv[0], std::cout); exit(0);
+            }
         }
     }
 
     // parse user args
-    if(argc != 6) {
-        print_usage(argv[0], std::cerr); exit(1);
-    }
     args_t user_args;
-    user_args.in_reads_fn = argv[1];
-    user_args.in_ref_fn = argv[2];
-    user_args.out_pos_counts_fn = argv[3];
-    user_args.out_ins_counts_fn = argv[4];
-    user_args.num_threads = atoi(argv[5]);
-    if(user_args.num_threads == 0) {
-        std::cerr << "Invalid number of threads: " << argv[5] << std::endl; exit(1);
+    for(int i = 1; i < argc; ++i) {
+        if(strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--in_reads") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -i/--in_reads expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.in_reads_fn = argv[i];
+        } else if(strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--ref_genome") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -r/--ref_genome expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.in_ref_fn = argv[i];
+        } else if(strcmp(argv[i], "-op") == 0 || strcmp(argv[i], "--out_pos_counts") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -op/--out_pos_counts expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.out_pos_counts_fn = argv[i];
+        } else if(strcmp(argv[i], "-oi") == 0 || strcmp(argv[i], "--out_ins_counts") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -oi/--out_ins_counts expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.out_ins_counts_fn = argv[i];
+        } else if(strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threads") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -t/--threads expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.num_threads = atoi(argv[i]);
+            if(user_args.num_threads < 1) {
+                std::cerr << "Invalid number of threads: " << argv[i] << std::endl; exit(1);
+            }
+        } else {
+            std::cerr << "Invalid argument: " << argv[i] << std::endl; print_usage(argv[0], std::cerr); exit(1);
+        }
     }
+
+    // check user args and return if valid
+    check_args(user_args);
     return user_args;
+}
+
+void check_args(args_t const & user_args) {
+    if(!user_args.in_reads_fn) {
+        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-i/--in_reads" << std::endl; exit(1);
+    } else if(!user_args.in_ref_fn) {
+        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-r/--ref_genome" << std::endl; exit(1);
+    } else if(!user_args.out_pos_counts_fn) {
+        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-op/--out_pos_counts" << std::endl; exit(1);
+    } else if(!user_args.out_ins_counts_fn) {
+        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-oi/--out_ins_counts" << std::endl; exit(1);
+    }
 }
 
 void print_args(args_t const & user_args) {
@@ -35,10 +78,11 @@ void print_args(args_t const & user_args) {
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " <IN_READS> <IN_REF_GENOME> <OUT_POS_COUNTS> <OUT_INS_COUNTS> <THREADS>" << std::endl
-        << "  - IN_READS         Input reads (CRAM/BAM/SAM)" << std::endl
-        << "  - IN_REF_GENOME    Input reference genome (FASTA)" << std::endl
-        << "  - OUT_POS_COUNTS   Output position counts" << std::endl
-        << "  - OUT_INS_COUNTS   Output insertion counts (JSON)" << std::endl
-        << "  - THREADS          Number of threads" << std::endl;
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS]" << std::endl
+        << "  -i/--in_reads IN_READS                Input reads (CRAM/BAM/SAM)" << std::endl
+        << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
+        << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts" << std::endl
+        << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON)" << std::endl
+        << "  -t/--threads THREADS                  Number of threads" << std::endl
+        << "  -h/--help                             Print this usage message" << std::endl;
 }

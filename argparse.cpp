@@ -79,10 +79,10 @@ void print_args(args_t const & user_args) {
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
     out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS]" << std::endl
-        << "  -i/--in_reads IN_READS                Input reads (CRAM/BAM/SAM)" << std::endl
+        << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts" << std::endl
         << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON)" << std::endl
-        << "  -t/--threads THREADS                  Number of threads" << std::endl
+        << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

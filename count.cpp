@@ -29,6 +29,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     // compute counts
     counts_t counts; counts.pos_counts.reserve(ref.length());
     bam1_t* aln = bam_init1(); int ret;
+    unsigned int DUMMY_COUNT = 0; // TODO delete
     while(true) {
         // read next alignment record (aln)
         ret = sam_read1(reads, header, aln);
@@ -40,6 +41,8 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
         // iterate over aligned pairs
         // TODO: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1958-L2066
+        ++DUMMY_COUNT; // TODO delete
     }
+    std::cout << DUMMY_COUNT << std::endl; // TODO DELETE
     return counts;
 }

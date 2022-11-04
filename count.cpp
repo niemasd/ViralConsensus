@@ -44,6 +44,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
     uint8_t* qqual;                              // current read quality string
+    uint32_t pos_plus_l;                         // store current pos_plus_l value
     int q_alignment_start;                       // index of query where the alignment starts (inclusive)
     int q_alignment_end;                         // index of query where the alignment ends (exclusive)
     unsigned int DUMMY_COUNT = 0; // TODO delete
@@ -117,21 +118,21 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
             else if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
-                for(i = pos; i < pos + l; ++i) {
+                pos_plus_l = pos + l;
+                while(pos < pos_plus_l) {
                     if(q_alignment_start == -1) {
                         q_alignment_start = qpos;
                     }
                     if(qqual[qpos] >= min_qual) {
-                        ++counts.pos_counts[i][BASE_TO_NUM[(int)qseq[qpos]]];
+                        ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
                     }
-                    ++qpos;
+                    ++qpos; ++pos;
                 }
-                pos += l;
             }
 
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
             else if(op == BAM_CINS) {
-                for(i = pos; i < pos + l; ++i) {
+                for(i = 0; i < l; ++l) {
                     if(q_alignment_start == -1 && op == BAM_CINS) {
                         q_alignment_start = qpos;
                     }
@@ -142,10 +143,11 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
             // handle deletion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2039-L2050
             else if(op == BAM_CDEL) {
-                for(i = pos; i < pos + l; ++i) {
+                pos_plus_l = pos + l;
+                while(pos < pos_plus_l) {
                     // TODO RESULT IS: (None, i, ref_seq[r_idx])
+                    ++pos;
                 }
-                pos += l;
             }
         }
 

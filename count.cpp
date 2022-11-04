@@ -32,8 +32,11 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     int op;                                      // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1986
     uint32_t* cigar_p;                           // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1987
     uint32_t qlen;                               // current read length: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L28
-    uint8_t* qual_s;                             // current read quality string: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
+    uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
+    uint8_t* qqual;                              // current read quality string
+    int q_alignment_start;                       // index of query where the alignment starts (inclusive)
+    int q_alignment_end;                         // index of query where the alignment ends (exclusive)
     unsigned int DUMMY_COUNT = 0; // TODO delete
 
     // reserve memory for various helper variabls (avoid resizing)
@@ -64,12 +67,27 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         qpos = 0;
         cigar_p = bam_get_cigar(src);
         qlen = src->core.l_qseq;
-        qual_s = bam_get_seq(src);
+        qseq_encoded = bam_get_seq(src);
+        qqual = bam_get_qual(src);
+        insertion_start_inds.clear();
+        insertion_end_inds.clear();
+        deletion_start_inds.clear();
+        deletion_end_inds.clear();
+        q_alignment_start = -1;
+        q_alignment_end = qlen;
+        for(k = n_cigar-1; k >= 1; --k) { // https://github.com/pysam-developers/pysam/blob/master/pysam/libcalignedsegment.pyx#L519-L527
+            op = cigar_p[k] & BAM_CIGAR_MASK;
+            if(op == BAM_CSOFT_CLIP) {
+                q_alignment_end -= (cigar_p[k] >> BAM_CIGAR_SHIFT);
+            } else if(op != BAM_CHARD_CLIP) {
+                break;
+            }
+        }
 
         // load read sequence
         qseq.clear();
-        for(i = 0; i < qlen; ++i) {
-            qseq.push_back(seq_nt16_str[bam_seqi(qual_s,i)]);
+        for(i = 0; i < qlen; ++i) { // https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L36-L38
+            qseq.push_back(seq_nt16_str[bam_seqi(qseq_encoded, i)]);
         }
 
         // iterate over aligned pairs: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2007-L2064
@@ -80,6 +98,9 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
             if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
                 for(i = pos; i < pos + l; ++i) {
+                    if(q_alignment_start == -1) {
+                        q_alignment_start = qpos;
+                    }
                     // TODO RESULT IS: (qpos, i, ref_seq[r_idx])
                     ++qpos;
                 }
@@ -89,6 +110,9 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
             else if(op == BAM_CINS || op == BAM_CSOFT_CLIP || op == BAM_CPAD) {
                 for(i = pos; i < pos + l; ++i) {
+                    if(q_alignment_start == -1 && op == BAM_CINS) {
+                        q_alignment_start = qpos;
+                    }
                     // TODO RESULT IS: (qpos, None, None)
                     ++qpos;
                 }

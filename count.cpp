@@ -2,6 +2,15 @@
 #include "fasta.h"
 #include <iostream>
 
+void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, char delim='\t') {
+    for(auto & row : pos_counts) {
+        for(auto & val : row) {
+            std::cout << val << delim;
+        }
+        std::cout << std::endl;
+    }
+}
+
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual=DEFAULT_MIN_QUAL) {
     // open reference FASTA file and CRAM/BAM/SAM file
     std::string ref = read_fasta(in_ref_fn);
@@ -39,8 +48,9 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     int q_alignment_end;                         // index of query where the alignment ends (exclusive)
     unsigned int DUMMY_COUNT = 0; // TODO delete
 
-    // reserve memory for various helper variabls (avoid resizing)
+    // reserve memory for various helper variabls (avoid resizing) and initialize pos counts
     counts.pos_counts.reserve(ref.length());
+    counts.pos_counts.resize(ref.length(), {0,0,0,0,0});
     counts.ins_counts.reserve(ref.length());
     insertion_start_inds.reserve(ref.length());
     insertion_end_inds.reserve(ref.length());
@@ -95,20 +105,32 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             op = cigar_p[k] & BAM_CIGAR_MASK;
             l = cigar_p[k] >> BAM_CIGAR_SHIFT;
 
+            // if soft-clipped, skip
+            if(op == BAM_CSOFT_CLIP) {
+                qpos += l;
+            }
+
+            // don't allow BAM_CPAD for now (I don't know what it is)
+            else if(op == BAM_CPAD) {
+                std::cerr << "BAM_CPAD operation in CIGAR string not currently supported" << std::endl; exit(1);
+            }
+
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
-            if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
+            else if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
                 for(i = pos; i < pos + l; ++i) {
                     if(q_alignment_start == -1) {
                         q_alignment_start = qpos;
                     }
-                    // TODO RESULT IS: (qpos, i, ref_seq[r_idx])
+                    if(qqual[qpos] >= min_qual) {
+                        ++counts.pos_counts[i][BASE_TO_NUM[(int)qseq[qpos]]];
+                    }
                     ++qpos;
                 }
                 pos += l;
             }
 
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
-            else if(op == BAM_CINS || op == BAM_CSOFT_CLIP || op == BAM_CPAD) {
+            else if(op == BAM_CINS) {
                 for(i = pos; i < pos + l; ++i) {
                     if(q_alignment_start == -1 && op == BAM_CINS) {
                         q_alignment_start = qpos;
@@ -130,5 +152,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         ++DUMMY_COUNT; // TODO delete
     }
     std::cout << "Number of reads: " << DUMMY_COUNT << std::endl; // TODO DELETE
+    print_pos_counts(counts.pos_counts);
     return counts;
 }

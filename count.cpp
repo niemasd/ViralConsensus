@@ -139,7 +139,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
             else if(op == BAM_CINS) {
-                for(i = 0; i < l; ++l) {
+                for(i = 0; i < l; ++i) {
                     if(q_alignment_start == -1 && op == BAM_CINS) {
                         q_alignment_start = qpos;
                     }

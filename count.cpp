@@ -73,7 +73,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     // prepare helper iterator objects
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
     std::unordered_map<std::string, COUNT_T>::iterator ins_counts_pos_it;
-    unsigned int DUMMY_COUNT = 0; // TODO delete
 
     // reserve memory for various helper variabls (avoid resizing) and initialize pos counts
     counts.pos_counts.reserve(ref.length());
@@ -124,9 +123,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         for(i = 0; i < qlen; ++i) { // https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L36-L38
             qseq.push_back(seq_nt16_str[bam_seqi(qseq_encoded, i)]);
         }
-        //if(bam_is_rev(src)) { // reverse strand
-        //    rev_comp_inplace(qseq);
-        //}
 
         // iterate over aligned pairs: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2007-L2064
         for(k = 0; k < n_cigar; ++k) {
@@ -195,9 +191,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             }
         }
 
-        ++DUMMY_COUNT; // TODO delete
     }
-    write_ins_counts_json(counts.ins_counts, std::cout);
-    //std::cout << "Number of reads: " << DUMMY_COUNT << std::endl; // TODO DELETE
     return counts;
 }

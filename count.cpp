@@ -11,6 +11,28 @@ void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, ch
     }
 }
 
+void print_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts) {
+    bool first1 = true, first2; std::cout << "{";
+    for(auto pair1 : ins_counts) {
+        if(first1) {
+            first1 = false;
+        } else {
+            std::cout << ", ";
+        }
+        std::cout << '"' << pair1.first << "\": {"; first2 = true;
+        for(auto pair2 : pair1.second) {
+            if(first2) {
+                first2 = false;
+            } else {
+                std::cout << ", ";
+            }
+            std::cout << '"' << pair2.first << "\": " << pair2.second;
+        }
+        std::cout << "}";
+    }
+    std::cout << "}" << std::endl;
+}
+
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual=DEFAULT_MIN_QUAL) {
     // open reference FASTA file and CRAM/BAM/SAM file
     std::string ref = read_fasta(in_ref_fn);
@@ -31,10 +53,10 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
     // prepare helper variables for computing counts
     counts_t counts;                             // counts_t object to store the counts themselves
-    std::vector<int> insertion_start_inds;       // start indices of insertions
-    std::vector<int> insertion_end_inds;         // end indices of insertions
-    std::vector<int> deletion_start_inds;        // start indices of deletions
-    std::vector<int> deletion_end_inds;          // end indices of deletions
+    //std::vector<int> insertion_start_inds;       // start indices of insertions
+    //std::vector<int> insertion_end_inds;         // end indices of insertions
+    //std::vector<int> deletion_start_inds;        // start indices of deletions
+    //std::vector<int> deletion_end_inds;          // end indices of deletions
     bam1_t* src = bam_init1();                   // holds the current alignment record, which is read by sam_read1()
     int ret;                                     // holds the return value of sam_read1()
     uint32_t k, i, pos, qpos, l, n_cigar;        // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1985
@@ -44,20 +66,28 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
     uint8_t* qqual;                              // current read quality string
-    uint32_t pos_plus_l;                         // store current pos_plus_l value
-    int q_alignment_start;                       // index of query where the alignment starts (inclusive)
-    int q_alignment_end;                         // index of query where the alignment ends (exclusive)
+    int curr_base_qual;                          // current base quality
+    int min_ins_qual;                            // minimum base quality in an insertion
+    uint32_t tmp_uint32;                         // store current tmp_uint32 value
+    std::string curr_ins;                        // current insertion
+    //int q_alignment_start;                       // index of query where the alignment starts (inclusive)
+    //int q_alignment_end;                         // index of query where the alignment ends (exclusive)
+
+    // prepare helper iterator objects
+    std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
+    std::unordered_map<std::string, COUNT_T>::iterator ins_counts_pos_it;
     unsigned int DUMMY_COUNT = 0; // TODO delete
 
     // reserve memory for various helper variabls (avoid resizing) and initialize pos counts
     counts.pos_counts.reserve(ref.length());
     counts.pos_counts.resize(ref.length(), {0,0,0,0,0});
     counts.ins_counts.reserve(ref.length());
-    insertion_start_inds.reserve(ref.length());
-    insertion_end_inds.reserve(ref.length());
-    deletion_start_inds.reserve(ref.length());
-    deletion_end_inds.reserve(ref.length());
+    //insertion_start_inds.reserve(ref.length());
+    //insertion_end_inds.reserve(ref.length());
+    //deletion_start_inds.reserve(ref.length());
+    //deletion_end_inds.reserve(ref.length());
     qseq.reserve(READ_SEQUENCE_RESERVE);
+    curr_ins.reserve(INSERTION_RESERVE);
 
     // compute counts
     while(true) {
@@ -69,9 +99,9 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             std::cerr << "Error reading file: " << in_reads_fn << std::endl; exit(1);
         }
 
-        // if this CIGAR is empty, skip
+        // if this read fails the required flags or this CIGAR is empty, skip
         n_cigar = src->core.n_cigar;
-        if(n_cigar == 0) { continue; }
+        if(src->core.flag & FAIL_FLAGS || n_cigar == 0) { continue; }
 
         // prepare helper variables
         pos = src->core.pos;
@@ -80,16 +110,17 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         qlen = src->core.l_qseq;
         qseq_encoded = bam_get_seq(src);
         qqual = bam_get_qual(src);
-        insertion_start_inds.clear();
-        insertion_end_inds.clear();
-        deletion_start_inds.clear();
-        deletion_end_inds.clear();
-        q_alignment_start = -1;
-        q_alignment_end = qlen;
+        curr_base_qual = -1;
+        //insertion_start_inds.clear();
+        //insertion_end_inds.clear();
+        //deletion_start_inds.clear();
+        //deletion_end_inds.clear();
+        //q_alignment_start = -1;
+        //q_alignment_end = qlen;
         for(k = n_cigar-1; k >= 1; --k) { // https://github.com/pysam-developers/pysam/blob/master/pysam/libcalignedsegment.pyx#L519-L527
             op = cigar_p[k] & BAM_CIGAR_MASK;
             if(op == BAM_CSOFT_CLIP) {
-                q_alignment_end -= (cigar_p[k] >> BAM_CIGAR_SHIFT);
+                //q_alignment_end -= (cigar_p[k] >> BAM_CIGAR_SHIFT);
             } else if(op != BAM_CHARD_CLIP) {
                 break;
             }
@@ -114,23 +145,12 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
                 qpos += l;
             }
 
-            else if(op == BAM_CREF_SKIP) {
-                std::cerr << "BAM_CREF_SKIP operation in CIGAR string not currently supported" << std::endl; exit(1);
-            }
-
-            // don't allow BAM_CPAD for now (I don't know what it is)
-            else if(op == BAM_CPAD) {
-                std::cerr << "BAM_CPAD operation in CIGAR string not currently supported" << std::endl; exit(1);
-            }
-
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
             else if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
-                pos_plus_l = pos + l;
-                while(pos < pos_plus_l) {
-                    if(q_alignment_start == -1) {
-                        q_alignment_start = qpos;
-                    }
-                    if(qqual[qpos] >= min_qual) {
+                tmp_uint32 = pos + l;
+                while(pos < tmp_uint32) {
+                    curr_base_qual = qqual[qpos];
+                    if(curr_base_qual >= min_qual) {
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
                     }
                     ++qpos; ++pos;
@@ -139,28 +159,53 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
             // handle insertion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2026-L2037
             else if(op == BAM_CINS) {
-                for(i = 0; i < l; ++i) {
-                    if(q_alignment_start == -1 && op == BAM_CINS) {
-                        q_alignment_start = qpos;
+                tmp_uint32 = qpos + l;
+                curr_ins.clear();
+                min_ins_qual = qqual[qpos];
+                while(qpos < tmp_uint32) {
+                    curr_base_qual = qqual[qpos];
+                    if(curr_base_qual < min_ins_qual) {
+                        min_ins_qual = curr_base_qual;
                     }
-                    // TODO RESULT IS: (qpos, None, None)
-                    ++qpos;
+                    curr_ins.push_back(qseq[qpos++]);
+                }
+                if(min_ins_qual >= min_qual) {
+                    ins_counts_it = counts.ins_counts.find(pos);
+                    if(ins_counts_it == counts.ins_counts.end()) {
+                        ins_counts_it = counts.ins_counts.emplace(pos, std::unordered_map<std::string, COUNT_T>()).first;
+                    }
+                    ins_counts_pos_it = ins_counts_it->second.find(curr_ins);
+                    if(ins_counts_pos_it == ins_counts_it->second.end()) {
+                        ins_counts_pos_it = ins_counts_it->second.emplace(curr_ins, 0).first;
+                    }
+                    ++(ins_counts_pos_it->second);
                 }
             }
 
             // handle deletion: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2039-L2050
             else if(op == BAM_CDEL) {
-                pos_plus_l = pos + l;
-                while(pos < pos_plus_l) {
+                tmp_uint32 = pos + l;
+                while(pos < tmp_uint32) {
                     // TODO RESULT IS: (None, i, ref_seq[r_idx])
                     ++pos;
                 }
+            }
+
+            // don't allow BAM_CREF_SKIP for now (I don't know what it is)
+            else if(op == BAM_CREF_SKIP) {
+                std::cerr << "BAM_CREF_SKIP operation in CIGAR string not currently supported" << std::endl; exit(1);
+            }
+
+            // don't allow BAM_CPAD for now (I don't know what it is)
+            else if(op == BAM_CPAD) {
+                std::cerr << "BAM_CPAD operation in CIGAR string not currently supported" << std::endl; exit(1);
             }
         }
 
         ++DUMMY_COUNT; // TODO delete
     }
     std::cout << "Number of reads: " << DUMMY_COUNT << std::endl; // TODO DELETE
-    print_pos_counts(counts.pos_counts);
+    //print_pos_counts(counts.pos_counts);
+    print_ins_counts_json(counts.ins_counts);
     return counts;
 }

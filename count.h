@@ -3,6 +3,7 @@
 #include "common.h"
 #include <omp.h>
 #include <array>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +20,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 // print pos_counts (for debugging)
 void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, char delim);
 
-// print ins_counts as JSON (for debugging)
-void print_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts);
+// write ins_counts as JSON file
+void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, std::ostream & out_file);
 #endif

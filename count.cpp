@@ -1,6 +1,5 @@
 #include "count.h"
 #include "fasta.h"
-#include <iostream>
 
 void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, char delim='\t') {
     for(auto & row : pos_counts) {
@@ -11,26 +10,26 @@ void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, ch
     }
 }
 
-void print_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts) {
-    bool first1 = true, first2; std::cout << "{";
+void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, std::ostream & out_file) {
+    bool first1 = true, first2; out_file << "{";
     for(auto pair1 : ins_counts) {
         if(first1) {
             first1 = false;
         } else {
-            std::cout << ", ";
+            out_file << ", ";
         }
-        std::cout << '"' << pair1.first << "\": {"; first2 = true;
+        out_file << '"' << pair1.first << "\": {"; first2 = true;
         for(auto pair2 : pair1.second) {
             if(first2) {
                 first2 = false;
             } else {
-                std::cout << ", ";
+                out_file << ", ";
             }
-            std::cout << '"' << pair2.first << "\": " << pair2.second;
+            out_file << '"' << pair2.first << "\": " << pair2.second;
         }
-        std::cout << "}";
+        out_file << "}";
     }
-    std::cout << "}" << std::endl;
+    out_file << "}" << std::endl;
 }
 
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual=DEFAULT_MIN_QUAL) {
@@ -53,8 +52,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
     // prepare helper variables for computing counts
     counts_t counts;                             // counts_t object to store the counts themselves
-    //std::vector<int> insertion_start_inds;       // start indices of insertions
-    //std::vector<int> insertion_end_inds;         // end indices of insertions
     //std::vector<int> deletion_start_inds;        // start indices of deletions
     //std::vector<int> deletion_end_inds;          // end indices of deletions
     bam1_t* src = bam_init1();                   // holds the current alignment record, which is read by sam_read1()
@@ -82,8 +79,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     counts.pos_counts.reserve(ref.length());
     counts.pos_counts.resize(ref.length(), {0,0,0,0,0});
     counts.ins_counts.reserve(ref.length());
-    //insertion_start_inds.reserve(ref.length());
-    //insertion_end_inds.reserve(ref.length());
     //deletion_start_inds.reserve(ref.length());
     //deletion_end_inds.reserve(ref.length());
     qseq.reserve(READ_SEQUENCE_RESERVE);
@@ -111,8 +106,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         qseq_encoded = bam_get_seq(src);
         qqual = bam_get_qual(src);
         curr_base_qual = -1;
-        //insertion_start_inds.clear();
-        //insertion_end_inds.clear();
         //deletion_start_inds.clear();
         //deletion_end_inds.clear();
         //q_alignment_start = -1;
@@ -204,8 +197,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
         ++DUMMY_COUNT; // TODO delete
     }
-    std::cout << "Number of reads: " << DUMMY_COUNT << std::endl; // TODO DELETE
-    //print_pos_counts(counts.pos_counts);
-    print_ins_counts_json(counts.ins_counts);
+    write_ins_counts_json(counts.ins_counts, std::cout);
+    //std::cout << "Number of reads: " << DUMMY_COUNT << std::endl; // TODO DELETE
     return counts;
 }

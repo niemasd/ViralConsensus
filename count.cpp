@@ -100,6 +100,9 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         for(i = 0; i < qlen; ++i) { // https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L36-L38
             qseq.push_back(seq_nt16_str[bam_seqi(qseq_encoded, i)]);
         }
+        //if(bam_is_rev(src)) { // reverse strand
+        //    rev_comp_inplace(qseq);
+        //}
 
         // iterate over aligned pairs: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2007-L2064
         for(k = 0; k < n_cigar; ++k) {
@@ -109,6 +112,10 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             // if soft-clipped, skip
             if(op == BAM_CSOFT_CLIP) {
                 qpos += l;
+            }
+
+            else if(op == BAM_CREF_SKIP) {
+                std::cerr << "BAM_CREF_SKIP operation in CIGAR string not currently supported" << std::endl; exit(1);
             }
 
             // don't allow BAM_CPAD for now (I don't know what it is)

@@ -175,8 +175,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
             else if(op == BAM_CDEL) {
                 tmp_uint32 = pos + l;
                 while(pos < tmp_uint32) {
-                    // TODO RESULT IS: (None, i, ref_seq[r_idx])
-                    ++pos;
+                    ++counts.pos_counts[pos++][BASE_TO_NUM[(int)'-']];
                 }
             }
 

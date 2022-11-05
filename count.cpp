@@ -37,7 +37,7 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     std::string ref = read_fasta(in_ref_fn);
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
-        exit(1); // failed to open file
+        std::cerr << "Failed to open file: " << in_reads_fn << std::endl; exit(1);
     } else if(reads->format.format != sam && reads->format.format != bam && reads->format.format != cram) {
         std::cerr << "Not a CRAM/BAM/SAM file: " << in_reads_fn << std::endl; exit(1);
     }

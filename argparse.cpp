@@ -5,7 +5,8 @@
 
 args_t parse_args(int const argc, char** const argv) {
     // check for -h or --help first
-    for(int i = 1; i < argc; ++i) {
+    int i;
+    for(i = 1; i < argc; ++i) {
         for(const char* const & s : HELP_ARG_STRINGS) {
             if(strcmp(argv[i], s) == 0) {
                 print_usage(argv[0], std::cout); exit(0);
@@ -15,7 +16,7 @@ args_t parse_args(int const argc, char** const argv) {
 
     // parse user args
     args_t user_args;
-    for(int i = 1; i < argc; ++i) {
+    for(i = 1; i < argc; ++i) {
         if(strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--in_reads") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -i/--in_reads expected 1 argument" << std::endl; exit(1);

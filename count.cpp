@@ -32,7 +32,7 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     out_file << "}" << std::endl;
 }
 
-counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual=DEFAULT_MIN_QUAL) {
+counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, uint8_t const min_qual=DEFAULT_MIN_QUAL) {
     // open reference FASTA file and CRAM/BAM/SAM file
     std::string ref = read_fasta(in_ref_fn);
     htsFile* reads = hts_open(in_reads_fn, "r");
@@ -52,23 +52,19 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
     // prepare helper variables for computing counts
     counts_t counts;                             // counts_t object to store the counts themselves
-    //std::vector<int> deletion_start_inds;        // start indices of deletions
-    //std::vector<int> deletion_end_inds;          // end indices of deletions
     bam1_t* src = bam_init1();                   // holds the current alignment record, which is read by sam_read1()
-    int ret;                                     // holds the return value of sam_read1()
+    int32_t ret;                                 // holds the return value of sam_read1()
     uint32_t k, i, pos, qpos, l, n_cigar;        // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1985
-    int op;                                      // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1986
+    int32_t op;                                  // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1986
     uint32_t* cigar_p;                           // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1987
     uint32_t qlen;                               // current read length: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L28
     uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
     uint8_t* qqual;                              // current read quality string
-    int curr_base_qual;                          // current base quality
-    int min_ins_qual;                            // minimum base quality in an insertion
+    uint8_t curr_base_qual;                      // current base quality
+    uint8_t min_ins_qual;                        // minimum base quality in an insertion
     uint32_t tmp_uint32;                         // store current tmp_uint32 value
     std::string curr_ins;                        // current insertion
-    //int q_alignment_start;                       // index of query where the alignment starts (inclusive)
-    //int q_alignment_end;                         // index of query where the alignment ends (exclusive)
 
     // prepare helper iterator objects
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
@@ -78,8 +74,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
     counts.pos_counts.reserve(ref.length());
     counts.pos_counts.resize(ref.length(), {0,0,0,0,0});
     counts.ins_counts.reserve(ref.length());
-    //deletion_start_inds.reserve(ref.length());
-    //deletion_end_inds.reserve(ref.length());
     qseq.reserve(READ_SEQUENCE_RESERVE);
     curr_ins.reserve(INSERTION_RESERVE);
 
@@ -105,18 +99,6 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
         qseq_encoded = bam_get_seq(src);
         qqual = bam_get_qual(src);
         curr_base_qual = -1;
-        //deletion_start_inds.clear();
-        //deletion_end_inds.clear();
-        //q_alignment_start = -1;
-        //q_alignment_end = qlen;
-        for(k = n_cigar-1; k >= 1; --k) { // https://github.com/pysam-developers/pysam/blob/master/pysam/libcalignedsegment.pyx#L519-L527
-            op = cigar_p[k] & BAM_CIGAR_MASK;
-            if(op == BAM_CSOFT_CLIP) {
-                //q_alignment_end -= (cigar_p[k] >> BAM_CIGAR_SHIFT);
-            } else if(op != BAM_CHARD_CLIP) {
-                break;
-            }
-        }
 
         // load read sequence
         qseq.clear();

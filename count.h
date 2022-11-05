@@ -15,7 +15,7 @@ struct counts_t {
 };
 
 // compute position and insertion counts
-counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, int const min_qual);
+counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, uint8_t const min_qual);
 
 // print pos_counts (for debugging)
 void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, char delim);

@@ -6,12 +6,12 @@
 
 // struct to store program args
 struct args_t {
-    char* in_reads_fn = nullptr;           // input reads filename (CRAM/BAM/SAM)
-    char* in_ref_fn = nullptr;             // input reference genome filename (FASTA)
-    char* out_pos_counts_fn = nullptr;     // output position counts filename
-    char* out_ins_counts_fn = nullptr;     // output insertion counts filename (JSON)
-    int num_threads = DEFAULT_NUM_THREADS; // number of threads
-    int min_qual = DEFAULT_MIN_QUAL;       // minimum base quality
+    char* in_reads_fn = nullptr;               // input reads filename (CRAM/BAM/SAM)
+    char* in_ref_fn = nullptr;                 // input reference genome filename (FASTA)
+    char* out_pos_counts_fn = nullptr;         // output position counts filename
+    char* out_ins_counts_fn = nullptr;         // output insertion counts filename (JSON)
+    int16_t num_threads = DEFAULT_NUM_THREADS; // number of threads
+    uint8_t min_qual = DEFAULT_MIN_QUAL;       // minimum base quality
 };
 
 // parse user args

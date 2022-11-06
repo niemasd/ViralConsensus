@@ -1,12 +1,25 @@
 #include "count.h"
 #include "fasta.h"
 
-void print_pos_counts(std::vector<std::array<COUNT_T, 5>> const & pos_counts, char delim='\t') {
-    for(auto & row : pos_counts) {
-        for(auto & val : row) {
-            std::cout << val << delim;
+void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::ostream & out_file, char delim) {
+    out_file << "Pos" << delim << 'A' << delim << 'C' << delim << 'G' << delim << 'T' << delim << '-' << delim << "Total" << std::endl;
+    auto pos_counts_size = pos_counts.size(); COUNT_T row_sum;
+    for(long unsigned int pos = 0; pos < pos_counts_size; ++pos) {
+        out_file << pos; row_sum = 0;
+        for(auto & val : pos_counts[pos]) {
+            out_file << delim << val; row_sum += val;
         }
-        std::cout << std::endl;
+        out_file << delim << row_sum << std::endl;
+    }
+}
+
+void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, const char* const out_fn, char delim) {
+    if(strcmp(out_fn, "-")) {
+        std::ofstream out_file(out_fn);
+        write_pos_counts_tsv(pos_counts, out_file, delim);
+        out_file.close();
+    } else {
+        write_pos_counts_tsv(pos_counts, std::cout, delim);
     }
 }
 
@@ -30,6 +43,16 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
         out_file << "}";
     }
     out_file << "}" << std::endl;
+}
+
+void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, const char* const out_fn) {
+    if(strcmp(out_fn, "-")) {
+        std::ofstream out_file(out_fn);
+        write_ins_counts_json(ins_counts, out_file);
+        out_file.close();
+    } else {
+        write_ins_counts_json(ins_counts, std::cout);
+    }
 }
 
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, uint8_t const min_qual=DEFAULT_MIN_QUAL) {

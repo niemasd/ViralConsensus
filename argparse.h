@@ -1,8 +1,6 @@
 #ifndef ARGPARSE_H
 #define ARGPARSE_H
 #include "common.h"
-#include <cstdint>
-#include <iostream>
 
 // struct to store program args
 struct args_t {

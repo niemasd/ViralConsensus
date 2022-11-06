@@ -202,7 +202,7 @@ std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_co
     std::string out; out.reserve(FASTA_STRING_RESERVE);
     long unsigned int const pos_counts_size = pos_counts.size();
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
-    char best_pos_base; const std::string* best_ins_seq; COUNT_T best_count; COUNT_T tot_depth;
+    char best_pos_base; const std::string* best_ins_seq; double best_count; double tot_depth;
     for(long unsigned int pos = 0; pos <= pos_counts_size; ++pos) {
         // handle insertions before pos
         ins_counts_it = ins_counts.find(pos);
@@ -238,7 +238,9 @@ std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_co
                 best_count = pos_counts[pos][4]; best_pos_base = '-';
             }
             if(tot_depth >= user_args.min_depth && (best_count/tot_depth) > user_args.min_freq) {
-                out += best_pos_base;
+                if(best_pos_base != '-') {
+                    out += best_pos_base;
+                }
             } else {
                 out += user_args.ambig;
             }

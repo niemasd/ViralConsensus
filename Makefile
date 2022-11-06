@@ -27,7 +27,7 @@ LIBS=-llzma -lbz2 -lz -lcurl -pthread
 CPP_FILES=main.cpp common.cpp argparse.cpp count.cpp fasta.cpp
 HEADER_FILES=common.h argparse.h count.h fasta.h
 GLOBAL_DEPS=$(CPP_FILES) $(HEADER_FILES)
-EXE=viral_consensus_mp
+EXE=viral_consensus
 DEBUG_SUFFIX=debug
 DEBUG_EXE=$(EXE)_$(DEBUG_SUFFIX)
 

@@ -1,7 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 #include "htslib/htslib/sam.h"
-#include <omp.h>
 #include <array>
 #include <cstdint>
 #include <fstream>

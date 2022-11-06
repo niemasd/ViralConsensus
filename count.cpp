@@ -1,9 +1,8 @@
 #include "count.h"
-#include "fasta.h"
 
 void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::ostream & out_file, char delim) {
     out_file << "Pos" << delim << 'A' << delim << 'C' << delim << 'G' << delim << 'T' << delim << '-' << delim << "Total" << std::endl;
-    auto pos_counts_size = pos_counts.size(); COUNT_T row_sum;
+    long unsigned int const pos_counts_size = pos_counts.size(); COUNT_T row_sum;
     for(long unsigned int pos = 0; pos < pos_counts_size; ++pos) {
         out_file << pos; row_sum = 0;
         for(auto & val : pos_counts[pos]) {
@@ -197,4 +196,53 @@ counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_
 
     }
     return counts;
+}
+
+std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, args_t const & user_args) {
+    std::string out; out.reserve(FASTA_STRING_RESERVE);
+    long unsigned int const pos_counts_size = pos_counts.size();
+    std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
+    char best_pos_base; const std::string* best_ins_seq; COUNT_T best_count; COUNT_T tot_depth;
+    for(long unsigned int pos = 0; pos <= pos_counts_size; ++pos) {
+        // handle insertions before pos
+        ins_counts_it = ins_counts.find(pos);
+        if(ins_counts_it != ins_counts.end()) {
+            best_count = 0; tot_depth = 0;
+            for(auto curr_ins : ins_counts_it->second) {
+                tot_depth += curr_ins.second;
+                if(curr_ins.second > best_count) {
+                    best_count = curr_ins.second; best_ins_seq = &(curr_ins.first);
+                }
+            }
+            if(tot_depth >= user_args.min_depth && (best_count/tot_depth) > user_args.min_freq) {
+                out += (*best_ins_seq);
+            }
+        }
+
+        // handle pos
+        if(pos != pos_counts_size) {
+            best_count = 0; tot_depth = pos_counts[pos][0] + pos_counts[pos][1] + pos_counts[pos][2] + pos_counts[pos][3] + pos_counts[pos][4];
+            if(pos_counts[pos][0] > best_count) {
+                best_count = pos_counts[pos][0]; best_pos_base = 'A';
+            }
+            if(pos_counts[pos][1] > best_count) {
+                best_count = pos_counts[pos][1]; best_pos_base = 'C';
+            }
+            if(pos_counts[pos][2] > best_count) {
+                best_count = pos_counts[pos][2]; best_pos_base = 'G';
+            }
+            if(pos_counts[pos][3] > best_count) {
+                best_count = pos_counts[pos][3]; best_pos_base = 'T';
+            }
+            if(pos_counts[pos][4] > best_count) {
+                best_count = pos_counts[pos][4]; best_pos_base = '-';
+            }
+            if(tot_depth >= user_args.min_depth && (best_count/tot_depth) > user_args.min_freq) {
+                out += best_pos_base;
+            } else {
+                out += user_args.ambig;
+            }
+        }
+    }
+    return out;
 }

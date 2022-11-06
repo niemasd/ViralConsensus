@@ -50,8 +50,32 @@ args_t parse_args(int const argc, char** const argv) {
                 std::cerr << "Argument -q/--min_qual expected 1 argument" << std::endl; exit(1);
             }
             user_args.min_qual = atoi(argv[i]);
-            if(user_args.min_qual < 1) {
-                std::cerr << "Invalid minimum base quality: " << argv[1] << std::endl; exit(1);
+            if(user_args.min_qual < 1 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
+                std::cerr << "Invalid minimum base quality: " << argv[i] << std::endl; exit(1);
+            }
+        } else if(strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--min_depth") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -d/--min_depth expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_depth = atoi(argv[i]);
+            if(user_args.min_depth < 1 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
+                std::cerr << "Invalid minimum depth: " << argv[i] << std::endl; exit(1);
+            }
+        } else if(strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--min_freq") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -f/--min_freq expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_freq = atof(argv[i]);
+            if(user_args.min_freq < 0 || user_args.min_freq > 1 || strcmp(argv[i], "") == 0 || argv[i][0] < '0' || argv[i][0] > '9') {
+                std::cerr << "Invalid minimum frequency: " << argv[i] << std::endl; exit(1);
+            }
+        } else if(strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--ambig") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -a/--ambig expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.ambig = argv[i][0];
+            if(strcmp(argv[i], "") == 0) {
+                std::cerr << "Invalid ambiguous symbol: " << argv[i] << std::endl; exit(1);
             }
         } else {
             std::cerr << "Invalid argument: " << argv[i] << std::endl; print_usage(argv[0], std::cerr); exit(1);
@@ -81,16 +105,23 @@ void print_args(args_t const & user_args) {
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl
               << "out_ins_counts_fn: " << user_args.out_ins_counts_fn << std::endl
               << "num_threads: " << user_args.num_threads << std::endl
-              << "min_qual: " << user_args.min_qual << std::endl;
+              << "min_qual: " << user_args.min_qual << std::endl
+              << "min_depth: " << user_args.min_depth << std::endl
+              << "min_freq: " << user_args.min_freq << std::endl
+              << "ambig: " << user_args.ambig << std::endl
+              ;
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output" << std::endl
         << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON), or '-' for standard output" << std::endl
         << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
-        << "  -q/--min_qual MIN_QUAL                Minimum base quality (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
+        << "  -q/--min_qual MIN_QUAL                Minimum base quality to count base in counts (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
+        << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl
+        << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl
+        << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

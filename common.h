@@ -13,6 +13,9 @@
 // definitions/constants for argparsing
 #define DEFAULT_NUM_THREADS 1
 #define DEFAULT_MIN_QUAL 20
+#define DEFAULT_MIN_DEPTH 10
+#define DEFAULT_MIN_FREQ 0.5
+#define DEFAULT_AMBIG 'N'
 #define MESSAGE_MISSING_REQUIRED_ARG "Missing required argument: "
 static std::array<const char* const, 4> const HELP_ARG_STRINGS = {"-h", "--help", "-help", "help"};
 

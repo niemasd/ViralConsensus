@@ -1,6 +1,8 @@
 #ifndef COUNT_H
 #define COUNT_H
 #include "common.h"
+#include "argparse.h"
+#include "fasta.h"
 
 // struct to store counts
 struct counts_t {
@@ -10,6 +12,9 @@ struct counts_t {
 
 // compute position and insertion counts
 counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, uint8_t const min_qual);
+
+// compute consensus genome sequence from counts
+std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, args_t const & user_args);
 
 // write pos_counts as TSV file
 void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::ostream & out_file, char delim='\t');

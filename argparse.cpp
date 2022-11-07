@@ -80,6 +80,19 @@ args_t parse_args(int const argc, char** const argv) {
             if(strcmp(argv[i], "") == 0) {
                 std::cerr << "Invalid ambiguous symbol: " << argv[i] << std::endl; exit(1);
             }
+        } else if(strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--primer_bed") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -p/--primer_bed expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.primer_bed_fn = argv[i];
+        } else if(strcmp(argv[i], "-po") == 0 || strcmp(argv[i], "--primer_offset") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -po/--primer_offset expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.primer_offset = atoi(argv[i]);
+            if(user_args.primer_offset < 0 || strcmp(argv[i], "") == 0 || argv[i][0] < '0' || argv[i][0] > '9') {
+                std::cerr << "Invalid primer offset: " << argv[i] << std::endl; exit(1);
+            }
         } else {
             std::cerr << "Invalid argument: " << argv[i] << std::endl; print_usage(argv[0], std::cerr); exit(1);
         }
@@ -99,6 +112,8 @@ void check_args(args_t const & user_args) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-op/--out_pos_counts" << std::endl; exit(1);
     } else if(!user_args.out_ins_counts_fn) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-oi/--out_ins_counts" << std::endl; exit(1);
+    } else if(user_args.primer_offset && !user_args.primer_bed_fn) {
+        std::cerr << "Cannot use -po without providing primer BED with -p" << std::endl; exit(1);
     }
 }
 
@@ -112,11 +127,13 @@ void print_args(args_t const & user_args) {
               << "min_depth: " << user_args.min_depth << std::endl
               << "min_freq: " << user_args.min_freq << std::endl
               << "ambig: " << user_args.ambig << std::endl
+              << "primer_bed_fn: " << user_args.primer_bed_fn << std::endl
+              << "primer_offset: " << user_args.primer_offset << std::endl
               ;
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output" << std::endl
@@ -126,6 +143,8 @@ void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream &
         << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl
         << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl
         << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
+        << "  -p/--primer_bed PRIMER_BED            Primer file (BED)" << std::endl
+        << "  -po/--primer_offset PRIMER_OFFSET     Number of bases after primer to also trim (default: " << DEFAULT_PRIMER_OFFSET << ")" << std::endl
         << "  -v/--version                          Print version number" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

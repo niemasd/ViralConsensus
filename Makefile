@@ -24,8 +24,8 @@ HTSLIB_A=htslib/libhts.a
 LIBS=-llzma -lbz2 -lz -lcurl -pthread
 
 # relevant constants
-CPP_FILES=main.cpp common.cpp argparse.cpp count.cpp fasta.cpp
-HEADER_FILES=common.h argparse.h count.h fasta.h
+CPP_FILES=main.cpp common.cpp argparse.cpp count.cpp fasta.cpp primer.cpp
+HEADER_FILES=common.h argparse.h count.h fasta.h primer.h
 GLOBAL_DEPS=$(CPP_FILES) $(HEADER_FILES)
 EXE=viral_consensus
 DEBUG_SUFFIX=debug

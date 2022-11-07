@@ -54,9 +54,8 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, const char* const in_ref_fn, uint8_t const min_qual=DEFAULT_MIN_QUAL) {
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual=DEFAULT_MIN_QUAL) {
     // open reference FASTA file and CRAM/BAM/SAM file
-    std::string ref = read_fasta(in_ref_fn);
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
         std::cerr << "Failed to open file: " << in_reads_fn << std::endl; exit(1);

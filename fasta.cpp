@@ -34,6 +34,9 @@ std::string read_fasta(const char* const in_ref_fn) {
 }
 
 void write_consensus_fasta(std::string const & consensus, args_t const & user_args) {
-    std::cout << '>' << "SEQUENCE" << std::endl // TODO UPDATE FASTA ID
-              << consensus << std::endl;
+    std::cout << ">viral_consensus v" << VERSION << " (--in_reads " << user_args.in_reads_fn << " --ref_genome " << user_args.in_ref_fn << " --min_qual " << (int)user_args.min_qual << " --min_depth " << user_args.min_depth << " --min_freq " << user_args.min_freq << " --ambig " << user_args.ambig;
+    if(user_args.primer_bed_fn) {
+        std::cout << " --primer_bed " << user_args.primer_bed_fn << " --primer_offset " << user_args.primer_offset;
+    }
+    std::cout << ')' << std::endl << consensus << std::endl;
 }

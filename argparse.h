@@ -4,15 +4,17 @@
 
 // struct to store program args
 struct args_t {
-    char* in_reads_fn = nullptr;               // input reads filename (CRAM/BAM/SAM)
-    char* in_ref_fn = nullptr;                 // input reference genome filename (FASTA)
-    char* out_pos_counts_fn = nullptr;         // output position counts filename
-    char* out_ins_counts_fn = nullptr;         // output insertion counts filename (JSON)
-    int16_t num_threads = DEFAULT_NUM_THREADS; // number of threads
-    uint8_t min_qual = DEFAULT_MIN_QUAL;       // minimum base quality to count base in counts
-    COUNT_T min_depth = DEFAULT_MIN_DEPTH;     // minimum depth to call base in consensus
-    double min_freq = DEFAULT_MIN_FREQ;        // minimum frequency to call base in consensus
-    char ambig = DEFAULT_AMBIG;                // ambiguous symbol
+    char* in_reads_fn = nullptr;                   // input reads filename (CRAM/BAM/SAM)
+    char* in_ref_fn = nullptr;                     // input reference genome filename (FASTA)
+    char* out_pos_counts_fn = nullptr;             // output position counts filename
+    char* out_ins_counts_fn = nullptr;             // output insertion counts filename (JSON)
+    int16_t num_threads = DEFAULT_NUM_THREADS;     // number of threads
+    uint8_t min_qual = DEFAULT_MIN_QUAL;           // minimum base quality to count base in counts
+    COUNT_T min_depth = DEFAULT_MIN_DEPTH;         // minimum depth to call base in consensus
+    double min_freq = DEFAULT_MIN_FREQ;            // minimum frequency to call base in consensus
+    char ambig = DEFAULT_AMBIG;                    // ambiguous symbol
+    char* primer_bed_fn = nullptr;                 // primer bed filename
+    int16_t primer_offset = DEFAULT_PRIMER_OFFSET; // number of bases after primer to also trim
 };
 
 // parse user args

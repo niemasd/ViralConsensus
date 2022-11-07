@@ -54,7 +54,7 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual=DEFAULT_MIN_QUAL) {
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<int32_t, int32_t>> const & min_max_primer_inds) {
     // open reference FASTA file and CRAM/BAM/SAM file
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
@@ -86,6 +86,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
     uint8_t min_ins_qual;                        // minimum base quality in an insertion
     uint32_t tmp_uint32;                         // store current tmp_uint32 value
     std::string curr_ins;                        // current insertion
+    bool primer_trim = !min_max_primer_inds.empty();
 
     // prepare helper iterator objects
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
@@ -143,6 +144,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
                     if(curr_base_qual >= min_qual) {
+                        // TODO HANDLE PRIMER TRIMMING: if(!primer_trim || pos is not in the range min_max_primer_inds[src->core.pos]) need to check forward vs. reverse (trim front if forward, trim end if reverse)
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
                     }
                     ++qpos; ++pos;

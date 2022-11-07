@@ -17,6 +17,7 @@ std::vector<std::pair<int32_t, int32_t>> read_bed(const char* const primer_bed_f
         getline(ss, tmp, '\t'); // end
         primers.push_back(std::make_pair(start, stoi(tmp)));
     }
+    std::sort(primers.begin(), primers.end()); // shouldn't be necessary (BED should be sorted), but just in case
     return primers;
 }
 
@@ -54,9 +55,5 @@ std::vector<std::pair<int32_t, int32_t>> find_overlapping_primers(int32_t const 
             }
         }
     }
-    for(int i = 0; i < min_max_primer_inds.size(); ++i) {
-        std::cout << i << "\t(" << min_max_primer_inds[i].first << ", " << min_max_primer_inds[i].second << ")" << std::endl;
-    }
-    exit(0);
     return min_max_primer_inds;
 }

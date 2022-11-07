@@ -4,13 +4,16 @@
 #include <unistd.h>
 
 args_t parse_args(int const argc, char** const argv) {
-    // check for -h or --help first
+    // check for -h/--help or -v/--version
     int i;
     for(i = 1; i < argc; ++i) {
         for(const char* const & s : HELP_ARG_STRINGS) {
             if(strcmp(argv[i], s) == 0) {
                 print_usage(argv[0], std::cout); exit(0);
-            }
+            } 
+        }
+        if(strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            std::cout << "viral_consensus v" << VERSION << std::endl; exit(0);
         }
     }
 
@@ -123,5 +126,6 @@ void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream &
         << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl
         << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl
         << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
+        << "  -v/--version                          Print version number" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

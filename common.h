@@ -9,6 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
+// global definitions/constants
+#define VERSION "0.0.1"
+
 // definitions/constants for argparsing
 #define DEFAULT_NUM_THREADS 1
 #define DEFAULT_MIN_QUAL 20

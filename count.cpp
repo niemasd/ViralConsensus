@@ -54,7 +54,7 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<int32_t, int32_t>> const & min_max_primer_inds) {
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<uint32_t, uint32_t>> const & min_max_primer_inds) {
     // open reference FASTA file and CRAM/BAM/SAM file
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
@@ -78,6 +78,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
     uint32_t k, i, pos, qpos, l, n_cigar;        // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1985
     int32_t op;                                  // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1986
     uint32_t* cigar_p;                           // https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L1987
+    bool is_reverse;                             // current read is reverse read
     uint32_t qlen;                               // current read length: https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L28
     uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
@@ -108,6 +109,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
         } else if(ret < -1) {
             std::cerr << "Error reading file: " << in_reads_fn << std::endl; exit(1);
         }
+        is_reverse = src->core.flag & BAM_FREVERSE;
 
         // if this read fails the required flags or this CIGAR is empty, skip
         n_cigar = src->core.n_cigar;
@@ -143,8 +145,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 tmp_uint32 = pos + l;
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
-                    if(curr_base_qual >= min_qual) {
-                        // TODO HANDLE PRIMER TRIMMING: if(!primer_trim || pos is not in the range min_max_primer_inds[src->core.pos]) need to check forward vs. reverse (trim front if forward, trim end if reverse)
+                    if(curr_base_qual >= min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].first))) {
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
                     }
                     ++qpos; ++pos;

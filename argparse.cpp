@@ -30,6 +30,11 @@ args_t parse_args(int const argc, char** const argv) {
                 std::cerr << "Argument -r/--ref_genome expected 1 argument" << std::endl; exit(1);
             }
             user_args.in_ref_fn = argv[i];
+        } else if(strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--out_consensus") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -o/--out_consensus expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.out_consensus_fn = argv[i];
         } else if(strcmp(argv[i], "-op") == 0 || strcmp(argv[i], "--out_pos_counts") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -op/--out_pos_counts expected 1 argument" << std::endl; exit(1);
@@ -108,6 +113,8 @@ void check_args(args_t const & user_args) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-i/--in_reads" << std::endl; exit(1);
     } else if(!user_args.in_ref_fn) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-r/--ref_genome" << std::endl; exit(1);
+    } else if(!user_args.out_consensus_fn) {
+        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-o/--out_consensus" << std::endl; exit(1);
     } else if(!user_args.out_pos_counts_fn) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-op/--out_pos_counts" << std::endl; exit(1);
     } else if(!user_args.out_ins_counts_fn) {
@@ -120,6 +127,7 @@ void check_args(args_t const & user_args) {
 void print_args(args_t const & user_args) {
     std::cout << "in_reads_fn: " << user_args.in_reads_fn << std::endl
               << "in_ref_fn: " << user_args.in_ref_fn << std::endl
+              << "out_consensus_fn: " << user_args.out_consensus_fn << std::endl
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl
               << "out_ins_counts_fn: " << user_args.out_ins_counts_fn << std::endl
               << "num_threads: " << user_args.num_threads << std::endl
@@ -133,9 +141,10 @@ void print_args(args_t const & user_args) {
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
+        << "  -o/--out_consensus OUT_CONSENSUS      Output consensus genome (FASTA), or '-' for standard output" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output" << std::endl
         << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON), or '-' for standard output" << std::endl
         << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl

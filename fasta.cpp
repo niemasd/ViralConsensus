@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 std::string read_fasta(const char* const in_ref_fn) {
     std::string ref; ref.reserve(FASTA_STRING_RESERVE);
@@ -34,9 +35,16 @@ std::string read_fasta(const char* const in_ref_fn) {
 }
 
 void write_consensus_fasta(std::string const & consensus, args_t const & user_args) {
-    std::cout << ">viral_consensus v" << VERSION << " (--in_reads " << user_args.in_reads_fn << " --ref_genome " << user_args.in_ref_fn << " --min_qual " << (int)user_args.min_qual << " --min_depth " << user_args.min_depth << " --min_freq " << user_args.min_freq << " --ambig " << user_args.ambig;
+    std::ostringstream out_ss;
+    out_ss << ">viral_consensus v" << VERSION << " (--in_reads " << user_args.in_reads_fn << " --ref_genome " << user_args.in_ref_fn << " --min_qual " << (int)user_args.min_qual << " --min_depth " << user_args.min_depth << " --min_freq " << user_args.min_freq << " --ambig " << user_args.ambig;
     if(user_args.primer_bed_fn) {
-        std::cout << " --primer_bed " << user_args.primer_bed_fn << " --primer_offset " << user_args.primer_offset;
+        out_ss << " --primer_bed " << user_args.primer_bed_fn << " --primer_offset " <<user_args.primer_offset;
     }
-    std::cout << ')' << std::endl << consensus << std::endl;
+    out_ss << ")" << std::endl << consensus << std::endl;
+    if(strcmp(user_args.out_consensus_fn, "-") == 0) {
+        std::cout << out_ss.str(); std::cout.flush();
+    } else {
+        std::ofstream out_file(user_args.out_consensus_fn);
+        out_file << out_ss.str(); out_file.close();
+    }
 }

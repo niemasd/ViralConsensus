@@ -9,7 +9,7 @@ struct args_t {
     char* out_consensus_fn = nullptr;              // output consensus genome filename (FASTA)
     char* out_pos_counts_fn = nullptr;             // output position counts filename (TSV)
     char* out_ins_counts_fn = nullptr;             // output insertion counts filename (JSON)
-    int16_t num_threads = DEFAULT_NUM_THREADS;     // number of threads
+    //int16_t num_threads = DEFAULT_NUM_THREADS;   // number of threads
     uint8_t min_qual = DEFAULT_MIN_QUAL;           // minimum base quality to count base in counts
     COUNT_T min_depth = DEFAULT_MIN_DEPTH;         // minimum depth to call base in consensus
     double min_freq = DEFAULT_MIN_FREQ;            // minimum frequency to call base in consensus

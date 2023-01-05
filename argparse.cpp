@@ -45,6 +45,7 @@ args_t parse_args(int const argc, char** const argv) {
                 std::cerr << "Argument -oi/--out_ins_counts expected 1 argument" << std::endl; exit(1);
             }
             user_args.out_ins_counts_fn = argv[i];
+        /* no multithreading support needed (for now)
         } else if(strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threads") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -t/--threads expected 1 argument" << std::endl; exit(1);
@@ -53,6 +54,7 @@ args_t parse_args(int const argc, char** const argv) {
             if(user_args.num_threads < 1) {
                 std::cerr << "Invalid number of threads: " << argv[i] << std::endl; exit(1);
             }
+        */
         } else if(strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--min_qual") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -q/--min_qual expected 1 argument" << std::endl; exit(1);
@@ -126,7 +128,7 @@ void print_args(args_t const & user_args) {
               << "out_consensus_fn: " << user_args.out_consensus_fn << std::endl
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl
               << "out_ins_counts_fn: " << user_args.out_ins_counts_fn << std::endl
-              << "num_threads: " << user_args.num_threads << std::endl
+              //<< "num_threads: " << user_args.num_threads << std::endl
               << "min_qual: " << user_args.min_qual << std::endl
               << "min_depth: " << user_args.min_depth << std::endl
               << "min_freq: " << user_args.min_freq << std::endl
@@ -137,13 +139,13 @@ void print_args(args_t const & user_args) {
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] [-oi OUT_INS_COUNTS] [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] [-oi OUT_INS_COUNTS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -o/--out_consensus OUT_CONSENSUS      Output consensus genome (FASTA), or '-' for standard output" << std::endl
         << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output (default: don't output)" << std::endl
         << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON), or '-' for standard output (default: don't output)" << std::endl
-        << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
+        //<< "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
         << "  -q/--min_qual MIN_QUAL                Minimum base quality to count base in counts (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
         << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl
         << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl

@@ -4,7 +4,7 @@ MAINTAINER Niema Moshiri <niemamoshiri@gmail.com>
 
 # install samtools
 RUN apk update && \
-    apk add bash bzip2-dev g++ git make xz-dev zlib-dev && \
+    apk add bash bzip2-dev curl-dev g++ git make xz-dev zlib-dev && \
     git clone https://github.com/niemasd/ViralConsensus.git && \
     cd ViralConsensus* && \
     make && \

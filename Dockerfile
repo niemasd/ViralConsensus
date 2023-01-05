@@ -8,6 +8,6 @@ RUN apk update && \
     git clone https://github.com/niemasd/ViralConsensus.git && \
     cd ViralConsensus* && \
     make && \
-    sudo mv viral_consensus /usr/local/bin/viral_consensus && \
+    mv viral_consensus /usr/local/bin/viral_consensus && \
     cd .. && \
     rm -rf ViralConsensus*

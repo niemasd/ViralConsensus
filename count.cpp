@@ -13,7 +13,9 @@ void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts
 }
 
 void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, const char* const out_fn, char delim) {
-    if(strcmp(out_fn, "-")) {
+    if(out_fn == nullptr) {
+        return;
+    } else if(strcmp(out_fn, "-")) {
         std::ofstream out_file(out_fn);
         write_pos_counts_tsv(pos_counts, out_file, delim);
         out_file.close();
@@ -45,7 +47,9 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
 }
 
 void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, const char* const out_fn) {
-    if(strcmp(out_fn, "-")) {
+    if(out_fn == nullptr) {
+        return;
+    } else if(strcmp(out_fn, "-")) {
         std::ofstream out_file(out_fn);
         write_ins_counts_json(ins_counts, out_file);
         out_file.close();

@@ -115,10 +115,6 @@ void check_args(args_t const & user_args) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-r/--ref_genome" << std::endl; exit(1);
     } else if(!user_args.out_consensus_fn) {
         std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-o/--out_consensus" << std::endl; exit(1);
-    } else if(!user_args.out_pos_counts_fn) {
-        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-op/--out_pos_counts" << std::endl; exit(1);
-    } else if(!user_args.out_ins_counts_fn) {
-        std::cerr << MESSAGE_MISSING_REQUIRED_ARG << "-oi/--out_ins_counts" << std::endl; exit(1);
     } else if(user_args.primer_offset && !user_args.primer_bed_fn) {
         std::cerr << "Cannot use -po without providing primer BED with -p" << std::endl; exit(1);
     }
@@ -141,12 +137,12 @@ void print_args(args_t const & user_args) {
 }
 
 void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
-    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS -op OUT_POS_COUNTS -oi OUT_INS_COUNTS [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
+    out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] [-oi OUT_INS_COUNTS] [-t THREADS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
         << "  -o/--out_consensus OUT_CONSENSUS      Output consensus genome (FASTA), or '-' for standard output" << std::endl
-        << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output" << std::endl
-        << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON), or '-' for standard output" << std::endl
+        << "  -op/--out_pos_counts OUT_POS_COUNTS   Output position counts (TSV), or '-' for standard output (default: don't output)" << std::endl
+        << "  -oi/--out_ins_counts OUT_INS_COUNTS   Output insertion counts (JSON), or '-' for standard output (default: don't output)" << std::endl
         << "  -t/--threads THREADS                  Number of threads (default: " << DEFAULT_NUM_THREADS << ")" << std::endl
         << "  -q/--min_qual MIN_QUAL                Minimum base quality to count base in counts (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
         << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl

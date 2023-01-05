@@ -11,7 +11,7 @@ make
 sudo mv viral_consensus /usr/local/bin/ # optional; install NGG executables globally
 ```
 
-You can also find a Docker container of ViralConsensus on DockerHub: TODO
+You can also find a Docker container of ViralConsensus on DockerHub: [niemasd/viral_consensus](https://hub.docker.com/r/niemasd/viral_consensus)
 
 # Usage
 ```

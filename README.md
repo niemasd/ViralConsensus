@@ -31,7 +31,7 @@ viral_consensus -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] 
   -h/--help                             Print this usage message
 ```
 
-# Citing CoaTran
+# Citing ViralConsensus
 If you use ViralConsensus in your work, please cite:
 
 > https://github.com/niemasd/ViralConsensus

@@ -31,6 +31,20 @@ viral_consensus -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] 
   -h/--help                             Print this usage message
 ```
 
+## Piping from Read Mapper
+Because ViralConsensus does not require reads to be sorted, data can be piped directly from the read mapper to ViralConsensus to avoid unnecessary disk I/O (and thus improve speed):
+
+```bash
+# ViralConsensus is single-threaded, so if running many samples, best to run mapper single-threaded as well and parallelize across samples
+minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | viral_consensus -i - -r reference.fas -o consensus.fas
+```
+
+Users will likely want to keep the output of the read mapper (e.g. as a compressed BAM file) for other downstream analyses, but rather than writing the output SAM/BAM/CRAM to disk and then having ViralConsensus read from that file, `tee` should be used instead to send the stream down two (or more) paths:
+
+```bash
+minimap2 -t 6 -a -x sr reference.fas reads.fastq.gz | tee >(viral_consensus -i - -r reference.fas -o consensus.fas) | samtools view -b -@ 1 > reads.bam
+```
+
 # Citing ViralConsensus
 If you use ViralConsensus in your work, please cite:
 

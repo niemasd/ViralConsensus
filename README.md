@@ -39,7 +39,7 @@ Because ViralConsensus does not require reads to be sorted, data can be piped di
 minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | viral_consensus -i - -r reference.fas -o consensus.fas
 ```
 
-Users will likely want to keep the output of the read mapper (e.g. as a compressed BAM file) for other downstream analyses, but rather than writing the output SAM/BAM/CRAM to disk and then having ViralConsensus read from that file, `tee` should be used instead to send the stream down two (or more) paths:
+Users will likely want to keep the output of the read mapper (e.g. as a compressed BAM file) for other downstream analyses, but rather than writing the output SAM/BAM/CRAM to disk and *then* having ViralConsensus read from that file, `tee` should be used instead to send the stream down two (or more) paths:
 
 ```bash
 minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | tee >(viral_consensus -i - -r reference.fas -o consensus.fas) | samtools view -b -@ 1 > reads.bam

@@ -48,4 +48,4 @@ minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | tee >(viral_consensus -i -
 # Citing ViralConsensus
 If you use ViralConsensus in your work, please cite:
 
-> Moshiri N (2023). "ViralConsensus: A fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data." *bioRxiv*. [doi:10.1101/2023.01.05.522928](https://doi.org/10.1101/2023.01.05.522928)
+> Moshiri N (2023). "ViralConsensus: A fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data." *Bioinformatics*. btad317. [doi:10.1093/bioinformatics/btad317](https://doi.org/10.1093/bioinformatics/btad317)

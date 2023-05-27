@@ -1,0 +1,42 @@
+.container {
+	display: flex;
+	align-items: center;
+	width: 100vw;
+	height: 70vh;
+	justify-content: space-between;
+}
+
+#input {
+	display: flex;
+	flex-direction: column;
+}
+
+#output {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	height: 90%;
+	width: 60%;
+}
+
+#outputText {
+	height: 100%;
+	width: 100%;
+}
+
+#loading {
+	height: 25px;
+	width: 25px;
+	animation: loading-anim 1.5s linear infinite;
+}
+
+@keyframes loading-anim {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}

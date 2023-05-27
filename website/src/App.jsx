@@ -21,7 +21,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1", "coreutils/wc/8.32"])
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"])
 		}, () => {
 			LOG("ViralConsensus Online Tool loaded.", true)
 		})
@@ -121,11 +121,10 @@ export class App extends Component {
 
 	downloadConsensus = async () => {
 		const CLI = this.state.CLI;
-		const file = await CLI.cat('consensus.fa');
+		const fileBlob = await CLI.download('consensus.fa');
 
 		const element = document.createElement("a");
-		const fileBlob = new Blob([file], { type: 'text/plain' });
-		element.href = URL.createObjectURL(fileBlob);
+		element.href = fileBlob;
 		element.download = "consensus.fa";
 		document.body.appendChild(element);
 		element.click();
@@ -143,12 +142,12 @@ export class App extends Component {
 						<div className="d-flex flex-column mb-5">
 							<label htmlFor="referenceFile" className="form-label">Reference File</label>
 							<input className="form-control" type="file" id="referenceFile" onChange={this.uploadRefFile} />
-							{this.state.refFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file.</a></p>}
+							{this.state.refFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</p>}
 						</div>
 						<div className="d-flex flex-column mb-5">
 							<label htmlFor="bamFile" className="form-label">Input BAM File</label>
 							<input className="form-control" type="file" id="bamFile" onChange={this.uploadBamFile} />
-							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file.</a></p>}
+							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file</a>.</p>}
 						</div>
 						<button type="button" className="btn btn-warning mb-5" onClick={this.loadExampleData}>Load Example Data</button>
 						<button type="button" className="btn btn-primary" onClick={this.runViralConsensus}>Submit</button>

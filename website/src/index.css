@@ -4,6 +4,11 @@ body {
 	justify-content: center;
 	width: 100vw;
 	height: 100vh;
+	max-width: 100%;
+}
+
+#root {
+	width: 100%;
 }
 
 .form-control:disabled, .form-control[readonly] {

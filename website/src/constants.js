@@ -1,6 +1,14 @@
 export const OUTPUT_ID = "output-text";
 export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/NC_045512.2.fas";
 export const EXAMPLE_BAM_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
+export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
+export const DEFAULT_VALS_MAPPING = {
+    "DEFAULT_MIN_QUAL": "minBaseQuality",
+    "DEFAULT_MIN_DEPTH": "minDepth",
+    "DEFAULT_MIN_FREQ": "minFreq", 
+    "DEFAULT_AMBIG": "ambigSymbol",
+    "DEFAULT_PRIMER_OFFSET": "primerOffset",
+}
 
 export const LOG = (output, clear = false) => {
     const textArea = document.getElementById(OUTPUT_ID);

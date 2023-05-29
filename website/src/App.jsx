@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-import { LOG, EXAMPLE_BAM_FILE, EXAMPLE_REF_FILE } from './constants'
+import { LOG, EXAMPLE_BAM_FILE, EXAMPLE_REF_FILE, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
 
 import './App.css'
 
@@ -15,9 +15,9 @@ export class App extends Component {
 			bamFile: undefined,
 			primerFile: undefined,
 			primerOffset: 0,
-			minBaseQuality: 20,
-			minDepth: 10,
-			minFreq: 0.5,
+			minBaseQuality: 0,
+			minDepth: 0,
+			minFreq: 0,
 			ambigSymbol: 'N',
 			genPosCounts: false,
 			genInsCounts: false,
@@ -33,6 +33,23 @@ export class App extends Component {
 		}, () => {
 			LOG("ViralConsensus Online Tool loaded.", true)
 		})
+
+		this.loadDefaults();
+	}
+
+	loadDefaults = async () => {
+		const defaultTextFile = await (await fetch(DEFAULT_VALS_FILE)).text();
+		const defaultText = [...defaultTextFile.matchAll(/#define DEFAULT.*$/gm)].map((line) => line[0].split(' '));
+		for (const defaultValue of defaultText) {
+			if (DEFAULT_VALS_MAPPING[defaultValue[1]]) {
+				if (isNaN(defaultValue[2])) {
+					defaultValue[2] = defaultValue[2].replace(/"|'/g, '');
+				} else {
+					defaultValue[2] = Number(defaultValue[2]);
+				}
+				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
+			}
+		}
 	}
 
 	uploadBamFile = (e) => {
@@ -117,6 +134,14 @@ export class App extends Component {
 			await CLI.fs.unlink('consensus.fa');
 		}
 
+		if (await CLI.ls('positionCounts.tsv')) {
+			await CLI.fs.unlink('positionCounts.tsv');
+		}
+
+		if (await CLI.ls('insertionCounts.tsv')) {
+			await CLI.fs.unlink('insertionCounts.tsv');
+		}
+
 		// Create example reference fasta file
 		if (this.state.refFile === 'EXAMPLE_DATA') {
 			const refFile = await (await fetch(EXAMPLE_REF_FILE)).text();
@@ -171,7 +196,8 @@ export class App extends Component {
 		}
 
 		// Generate consensus genome
-		await CLI.exec(command);
+		// await CLI.exec(command);
+		console.log(command)
 		const consensusFile = await CLI.ls('consensus.fa');
 		if (!consensusFile || consensusFile.size === 0) {
 			LOG("Error: No consensus genome generated. Please check your input files.")
@@ -184,17 +210,28 @@ export class App extends Component {
 	}
 
 	downloadConsensus = async () => {
+		await this.downloadFile('consensus.fa');
+		await this.downloadFile('positionCounts.tsv');
+		await this.downloadFile('insertionCounts.tsv');
+	}
+
+	downloadFile = async (fileName) => {
+
 		const CLI = this.state.CLI;
-		const fileBlob = await CLI.download('consensus.fa');
+		if (!(await CLI.ls(fileName))) {
+			return;
+		}
+
+		const fileBlob = await CLI.download(fileName);
 
 		const element = document.createElement("a");
 		element.href = fileBlob;
-		element.download = "consensus.fa";
+		element.download = fileName;
 		document.body.appendChild(element);
 		element.click();
 		document.body.removeChild(element);
 
-		LOG("Downloaded consensus.fa")
+		LOG(`Downloaded ${fileName}`)
 	}
 
 	render() {
@@ -216,37 +253,48 @@ export class App extends Component {
 							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file</a>.</p>}
 						</div>
 
-						<div className="d-flex flex-column mb-4">
-							<label htmlFor="primer-file" className="form-label">Primer (BED) File</label>
-							<input className="form-control" type="file" id="primer-file" onChange={this.uploadPrimerFile} />
-						</div>
+						<div className="accordion accordion-flush mb-4" id="optional-args">
+							<div className="accordion-item">
+								<h2 className="accordion-header">
+									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opt-args-collapse" aria-expanded="false" aria-controls="opt-args-collapse">
+										Optional Arguments
+									</button>
+								</h2>
+								<div id="opt-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#optional-args">
+									<div className="d-flex flex-column mb-4">
+										<label htmlFor="primer-file" className="form-label">Primer (BED) File</label>
+										<input className="form-control" type="file" id="primer-file" onChange={this.uploadPrimerFile} />
+									</div>
 
-						<label htmlFor="min-base-quality" className="form-label">Number of Bases After Primer to Also Trim</label>
-						<input id="primer-offset" className="form-control mb-4" type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
+									<label htmlFor="min-base-quality" className="form-label">Number of Bases After Primer to Also Trim</label>
+									<input id="primer-offset" className="form-control mb-4" type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
 
-						<label htmlFor="min-base-quality" className="form-label">Minimum Base Quality to Count Base in Counts</label>
-						<input id="min-base-quality" className="form-control mb-4" type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
+									<label htmlFor="min-base-quality" className="form-label">Min. Base Quality to Count Base in Counts</label>
+									<input id="min-base-quality" className="form-control mb-4" type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
 
-						<label htmlFor="min-depth" className="form-label">Minimum Depth to Call Base/Insertion in Consensus</label>
-						<input id="min-depth" className="form-control mb-4" type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
+									<label htmlFor="min-depth" className="form-label">Min. Depth to Call Base/Insertion in Consensus</label>
+									<input id="min-depth" className="form-control mb-4" type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
 
-						<label htmlFor="min-freq" className="form-label">Minimum Frequency to Call Base/Insertion in Consensus</label>
-						<input id="min-freq" className="form-control mb-4" type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
+									<label htmlFor="min-freq" className="form-label">Min. Frequency to Call Base/Insertion in Consensus</label>
+									<input id="min-freq" className="form-control mb-4" type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
 
-						<label htmlFor="ambig-symbol" className="form-label">Ambiguous Symbol</label>
-						<input id="ambig-symbol" className="form-control mb-4" type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
+									<label htmlFor="ambig-symbol" className="form-label">Ambiguous Symbol</label>
+									<input id="ambig-symbol" className="form-control mb-4" type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
 
-						<div class="form-check">
-							<label className="form-check-label" htmlFor="output-pos-counts">
-								Generate Position Counts
-							</label>
-							<input className="form-check-input" type="checkbox" name="output-pos-counts" id="output-pos-counts" checked={this.state.genPosCounts} onClick={this.setGenPosCounts} />
-						</div>
-						<div class="form-check">
-							<label className="form-check-label" htmlFor="output-ins-counts">
-								Generate Insertion Counts
-							</label>
-							<input className="form-check-input" type="checkbox" name="output-ins-counts" id="output-ins-counts" checked={this.state.genInsCounts} onClick={this.setGenInsCounts} />
+									<div className="form-check">
+										<label className="form-check-label" htmlFor="output-pos-counts">
+											Generate Position Counts
+										</label>
+										<input className="form-check-input" type="checkbox" name="output-pos-counts" id="output-pos-counts" checked={this.state.genPosCounts} onChange={this.setGenPosCounts} />
+									</div>
+									<div className="form-check">
+										<label className="form-check-label" htmlFor="output-ins-counts">
+											Generate Insertion Counts
+										</label>
+										<input className="form-check-input" type="checkbox" name="output-ins-counts" id="output-ins-counts" checked={this.state.genInsCounts} onChange={this.setGenInsCounts} />
+									</div>
+								</div>
+							</div>
 						</div>
 						<button type="button" className="btn btn-warning mt-4 mb-4" onClick={this.loadExampleData}>Load Example Data</button>
 						<button type="button" className="btn btn-primary" onClick={this.runViralConsensus}>Submit</button>

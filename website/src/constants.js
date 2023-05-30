@@ -10,11 +10,13 @@ export const DEFAULT_VALS_MAPPING = {
     "DEFAULT_PRIMER_OFFSET": "primerOffset",
 }
 
-export const LOG = (output, clear = false) => {
+export const CLEAR_LOG = () => {
     const textArea = document.getElementById(OUTPUT_ID);
-    if (clear) {
-        textArea.value = "";
-    }
+    textArea.value = "";
+}
+
+export const LOG = (output) => {
+    const textArea = document.getElementById(OUTPUT_ID);
     const date = new Date();
     textArea.value += `${getTimeWithMilliseconds(date)}: ` + output + "\n";
 }

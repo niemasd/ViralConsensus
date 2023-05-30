@@ -36,6 +36,7 @@
 	height: 25px;
 	width: 25px;
 	animation: loading-anim 1.5s linear infinite;
+	align-self: center;
 }
 
 @keyframes loading-anim {

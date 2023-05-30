@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-import { LOG, EXAMPLE_BAM_FILE, EXAMPLE_REF_FILE, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
+import { CLEAR_LOG, LOG, EXAMPLE_BAM_FILE, EXAMPLE_REF_FILE, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
 
 import './App.css'
 
@@ -14,24 +14,45 @@ export class App extends Component {
 			refFile: undefined,
 			bamFile: undefined,
 			primerFile: undefined,
+			refFileValid: true,
+			bamFileValid: true,
+			primerFileValid: true,
+
 			primerOffset: 0,
+			primerOffsetValid: true,
+			primerOffsetDefault: 0,
+
 			minBaseQuality: 0,
+			minBaseQualityValid: true,
+			minBaseQualityDefault: 0,
+
 			minDepth: 0,
+			minDepthValid: true,
+			minDepthDefault: 0,
+
 			minFreq: 0,
+			minFreqValid: true,
+			minFreqDefault: 0,
+
 			ambigSymbol: 'N',
+			ambigSymbolValid: true,
+			ambigSymbolDefault: 'N',
+
 			genPosCounts: false,
 			genInsCounts: false,
 			CLI: undefined,
 			done: false,
-			loading: false
+			loading: false,
+			inputChanged: false
 		}
 	}
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"])
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], {debug: true})
 		}, () => {
-			LOG("ViralConsensus Online Tool loaded.", true)
+			CLEAR_LOG()
+			LOG("ViralConsensus Online Tool loaded.")
 		})
 
 		this.loadDefaults();
@@ -47,83 +68,126 @@ export class App extends Component {
 				} else {
 					defaultValue[2] = Number(defaultValue[2]);
 				}
-				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
+				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]] + "Default"]: defaultValue[2], [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
 			}
 		}
 	}
 
 	uploadBamFile = (e) => {
-		this.setState({ bamFile: e.target.files[0] })
+		this.setState({ bamFile: e.target.files[0], inputChanged: true })
 	}
 
 	uploadRefFile = (e) => {
-		this.setState({ refFile: e.target.files[0] })
+		this.setState({ refFile: e.target.files[0], inputChanged: true })
 	}
 
 	uploadPrimerFile = (e) => {
-		this.setState({ primerFile: e.target.files[0] })
+		this.setState({ primerFile: e.target.files[0], inputChanged: true })
 	}
 
 	setPrimerOffset = (e) => {
-		this.setState({ primerOffset: e.target.value })
+		let primerOffsetValid = true;
+
+		if (e.target.value < 0) {
+			primerOffsetValid = false;
+		}
+
+		this.setState({ primerOffset: e.target.value, primerOffsetValid, inputChanged: true })
 	}
 
 	setMinBaseQuality = (e) => {
-		this.setState({ minBaseQuality: e.target.value })
+		let minBaseQualityValid = true;
+
+		if (e.target.value < 0) {
+			minBaseQualityValid = false;
+		}
+
+		this.setState({ minBaseQuality: e.target.value, minBaseQualityValid, inputChanged: true })
 	}
 
 	setMinDepth = (e) => {
-		this.setState({ minDepth: e.target.value })
+		let minDepthValid = true;
+
+		if (e.target.value < 0) {
+			minDepthValid = false;
+		}
+
+		this.setState({ minDepth: e.target.value, minDepthValid, inputChanged: true })
 	}
 
 	setMinFreq = (e) => {
-		this.setState({ minFreq: e.target.value })
+		let minFreqValid = true;
+
+		if (e.target.value < 0 || e.target.value > 1) {
+			minFreqValid = false;
+		}
+
+		this.setState({ minFreq: e.target.value, minFreqValid, inputChanged: true })
 	}
 
 	setAmbigSymbol = (e) => {
-		this.setState({ ambigSymbol: e.target.value })
+		let ambigSymbolValid = true;
+
+		if (e.target.value.length !== 1) {
+			ambigSymbolValid = false;
+		}
+
+		this.setState({ ambigSymbol: e.target.value, ambigSymbolValid, inputChanged: true })
 	}
 
 	setGenPosCounts = (e) => {
-		this.setState({ genPosCounts: e.target.checked })
+		this.setState({ genPosCounts: e.target.checked, inputChanged: true })
 	}
 
 	setGenInsCounts = (e) => {
-		this.setState({ genInsCounts: e.target.checked })
+		this.setState({ genInsCounts: e.target.checked, inputChanged: true })
 	}
 
 	loadExampleData = () => {
-		this.setState({
-			refFile: 'EXAMPLE_DATA',
-			bamFile: 'EXAMPLE_DATA'
+		this.setState(prevState => {
+			return {
+				refFile: 'EXAMPLE_DATA',
+				bamFile: 'EXAMPLE_DATA',
+				refFileValid: true,
+				bamFileValid: true,
+				inputChanged: prevState.refFile !== 'EXAMPLE_DATA' || prevState.bamFile !== 'EXAMPLE_DATA'
+			}
 		})
 	}
 
 	validInput = () => {
 		let valid = true;
-		LOG("Validating input...", true)
+		let refFileValid = true;
+		let bamFileValid = true;
+		// Note: Other input validation is done in the setters
+
+		CLEAR_LOG()
+		LOG("Validating input...")
 
 		if (!this.state.refFile) {
-			LOG("Please upload a reference file.")
-			valid = false;
+			refFileValid = false;
 		}
 
 		if (!this.state.bamFile) {
-			LOG("Please upload a BAM file.")
-			valid = false;
+			bamFileValid = false;
 		}
+
+		valid = refFileValid && bamFileValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
+
+		this.setState({ refFileValid, bamFileValid })
 
 		return valid;
 	}
 
 	runViralConsensus = async () => {
 		if (!this.validInput()) {
+			LOG("Invalid input. Please check your input and try again.")
 			return;
 		}
 
 		const startTime = performance.now();
 		LOG("Running ViralConsensus...")
-		this.setState({ done: false, loading: true })
+		this.setState({ done: false, loading: true, inputChanged: false })
 
 		const CLI = this.state.CLI;
 		let command = `viral_consensus -i ${this.state.bamFile?.name ?? 'alignments.bam'} -r ${this.state.refFile?.name ?? 'ref.fas'} -o consensus.fa`;
@@ -149,27 +213,18 @@ export class App extends Component {
 				name: 'ref.fas',
 				data: refFile
 			})
+			// await CLI.mount([{ name: "ref.fas", url: EXAMPLE_REF_FILE }])
+			// console.log(await CLI.cat('ref.fas'))
 		} else {
-			const fileReader = new FileReader();
-			fileReader.onload = async () => {
-				await CLI.mount({
-					name: this.state.refFile.name,
-					data: fileReader.result
-				})
-			}
-			fileReader.readAsText(this.state.refFile);
+			await CLI.mount([this.state.refFile])
 		}
 
 		// Create example alignments
 		if (this.state.bamFile === 'EXAMPLE_DATA') {
-			const bamFile = await (await fetch(EXAMPLE_BAM_FILE)).arrayBuffer();
-			await CLI.fs.writeFile('alignments.bam', new Uint8Array(bamFile));
+			await CLI.mount([{ name: "alignments.bam", url: EXAMPLE_BAM_FILE }])
+			console.log(await CLI.cat('alignments.bam'))
 		} else {
-			const fileReader = new FileReader();
-			fileReader.onload = async () => {
-				await CLI.fs.writeFile(this.state.bamFile.name, new Uint8Array(fileReader.result));
-			}
-			fileReader.readAsArrayBuffer(this.state.bamFile);
+			await CLI.mount([this.state.bamFile])
 		}
 
 		// Create example primer file
@@ -196,8 +251,9 @@ export class App extends Component {
 		}
 
 		// Generate consensus genome
-		// await CLI.exec(command);
-		console.log(command)
+		LOG("Executing command: " + command)
+		await CLI.exec(command);
+		console.log(await CLI.ls('./'))
 		const consensusFile = await CLI.ls('consensus.fa');
 		if (!consensusFile || consensusFile.size === 0) {
 			LOG("Error: No consensus genome generated. Please check your input files.")
@@ -243,13 +299,13 @@ export class App extends Component {
 						<h4 className="mb-3">Input</h4>
 						<div className="d-flex flex-column mb-4">
 							<label htmlFor="reference-file" className="form-label">Reference File <span className="text-danger">*</span></label>
-							<input className="form-control" type="file" id="reference-file" onChange={this.uploadRefFile} />
+							<input className={`form-control ${!this.state.refFileValid && 'is-invalid'}`} type="file" id="reference-file" onChange={this.uploadRefFile} />
 							{this.state.refFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</p>}
 						</div>
 
 						<div className="d-flex flex-column mb-4">
 							<label htmlFor="bam-file" className="form-label">Input BAM File <span className="text-danger">*</span></label>
-							<input className="form-control" type="file" id="bam-file" onChange={this.uploadBamFile} />
+							<input className={`form-control ${!this.state.bamFileValid && 'is-invalid'}`} type="file" id="bam-file" onChange={this.uploadBamFile} />
 							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file</a>.</p>}
 						</div>
 
@@ -266,20 +322,25 @@ export class App extends Component {
 										<input className="form-control" type="file" id="primer-file" onChange={this.uploadPrimerFile} />
 									</div>
 
-									<label htmlFor="min-base-quality" className="form-label">Number of Bases After Primer to Also Trim</label>
-									<input id="primer-offset" className="form-control mb-4" type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
+									<label htmlFor="min-base-quality" className="form-label">Primer Offset</label>
+									<input id="primer-offset" className={`form-control ${!this.state.primerOffsetValid && 'is-invalid'}`} type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
+									<div className="form-text mb-4">Number of bases after primer to also trim (default: {this.state.primerOffsetDefault})</div>
 
-									<label htmlFor="min-base-quality" className="form-label">Min. Base Quality to Count Base in Counts</label>
-									<input id="min-base-quality" className="form-control mb-4" type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
+									<label htmlFor="min-base-quality" className="form-label">Minimum Base Quality</label>
+									<input id="min-base-quality" className={`form-control ${!this.state.minBaseQualityValid && 'is-invalid'}`} type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
+									<div className="form-text mb-4">Min. base quality to count base in counts (default: {this.state.minBaseQualityDefault})</div>
 
-									<label htmlFor="min-depth" className="form-label">Min. Depth to Call Base/Insertion in Consensus</label>
-									<input id="min-depth" className="form-control mb-4" type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
+									<label htmlFor="min-depth" className="form-label">Minimum Depth</label>
+									<input id="min-depth" className={`form-control ${!this.state.minDepthValid && 'is-invalid'}`} type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
+									<div className="form-text mb-4">Min. depth to call base in consensus (default: {this.state.minDepthDefault})</div>
 
-									<label htmlFor="min-freq" className="form-label">Min. Frequency to Call Base/Insertion in Consensus</label>
-									<input id="min-freq" className="form-control mb-4" type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
+									<label htmlFor="min-freq" className="form-label">Minimum Frequency</label>
+									<input id="min-freq" className={`form-control ${!this.state.minFreqValid && 'is-invalid'}`} type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
+									<div className="form-text mb-4">Min. frequency to call base/insertion in consensus (default: {this.state.minFreqDefault})</div>
 
 									<label htmlFor="ambig-symbol" className="form-label">Ambiguous Symbol</label>
-									<input id="ambig-symbol" className="form-control mb-4" type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
+									<input id="ambig-symbol" className={`form-control ${!this.state.ambigSymbolValid && 'is-invalid'}`} type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
+									<div className="form-text mb-4">Symbol to use for ambiguous bases (default: {this.state.ambigSymbolDefault})</div>
 
 									<div className="form-check">
 										<label className="form-check-label" htmlFor="output-pos-counts">
@@ -303,7 +364,8 @@ export class App extends Component {
 						<label htmlFor="output-text" className="mb-3"><h4>Console</h4></label>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
-						{this.state.done && <button type="button" className={`btn btn-primary mt-3`} onClick={this.downloadConsensus}>Download Output</button>}
+						{this.state.done && <button type="button" className={`btn btn-primary mt-4`} onClick={this.downloadConsensus}>Download Output</button>}
+						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>
 			</div>

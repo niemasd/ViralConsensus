@@ -1,3 +1,3 @@
-validation and error handling for all inputs (esp primer dealio)
-errors should either mention defualts or default value should be mentioned already
 do alotta testing
+
+Questions to ask: Mounting text file, 12KB limit

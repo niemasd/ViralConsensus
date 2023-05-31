@@ -49,7 +49,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], {debug: true})
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], { debug: true })
 		}, () => {
 			CLEAR_LOG()
 			LOG("ViralConsensus Online Tool loaded.")
@@ -368,6 +368,10 @@ export class App extends Component {
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>
+				<footer class="text-center">
+					Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
+					Special thank you to Robert Aboukhalil for his support.<br />
+				</footer>
 			</div>
 		)
 	}

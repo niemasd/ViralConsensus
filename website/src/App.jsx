@@ -11,6 +11,8 @@ export class App extends Component {
 		super(props)
 
 		this.state = {
+			version: '',
+
 			refFile: undefined,
 			bamFile: undefined,
 			primerFile: undefined,
@@ -49,16 +51,16 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], { debug: true })
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"])
 		}, () => {
 			CLEAR_LOG()
 			LOG("ViralConsensus Online Tool loaded.")
 		})
 
-		this.loadDefaults();
+		this.loadDefaultsAndVersion();
 	}
 
-	loadDefaults = async () => {
+	loadDefaultsAndVersion = async () => {
 		const defaultTextFile = await (await fetch(DEFAULT_VALS_FILE)).text();
 		const defaultText = [...defaultTextFile.matchAll(/#define DEFAULT.*$/gm)].map((line) => line[0].split(' '));
 		for (const defaultValue of defaultText) {
@@ -71,6 +73,9 @@ export class App extends Component {
 				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]] + "Default"]: defaultValue[2], [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
 			}
 		}
+		
+		const version = 'v' + defaultTextFile.matchAll(/#define VERSION.*$/gm).next().value[0].split(' ')[2].replace(/"|'/g, '');
+		this.setState({ version })
 	}
 
 	uploadBamFile = (e) => {
@@ -87,10 +92,6 @@ export class App extends Component {
 
 	setPrimerOffset = (e) => {
 		let primerOffsetValid = true;
-
-		if (e.target.value < 0) {
-			primerOffsetValid = false;
-		}
 
 		this.setState({ primerOffset: e.target.value, primerOffsetValid, inputChanged: true })
 	}
@@ -222,7 +223,6 @@ export class App extends Component {
 		// Create example alignments
 		if (this.state.bamFile === 'EXAMPLE_DATA') {
 			await CLI.mount([{ name: "alignments.bam", url: EXAMPLE_BAM_FILE }])
-			console.log(await CLI.cat('alignments.bam'))
 		} else {
 			await CLI.mount([this.state.bamFile])
 		}
@@ -253,7 +253,6 @@ export class App extends Component {
 		// Generate consensus genome
 		LOG("Executing command: " + command)
 		await CLI.exec(command);
-		console.log(await CLI.ls('./'))
 		const consensusFile = await CLI.ls('consensus.fa');
 		if (!consensusFile || consensusFile.size === 0) {
 			LOG("Error: No consensus genome generated. Please check your input files.")
@@ -293,9 +292,9 @@ export class App extends Component {
 	render() {
 		return (
 			<div className="App pb-5">
-				<h1 className="mt-4 mb-5 text-center">ViralConsensus Online Tool</h1>
-				<div className="container mt-3">
-					<div id="input" className="mx-5">
+				<h1 className="mt-4 mb-5 text-center">ViralConsensus Online Tool {this.state.version}</h1>
+				<div className="mt-3" id="container">
+					<div id="input" className="ms-5 me-4">
 						<h4 className="mb-3">Input</h4>
 						<div className="d-flex flex-column mb-4">
 							<label htmlFor="reference-file" className="form-label">Reference File <span className="text-danger">*</span></label>
@@ -308,6 +307,11 @@ export class App extends Component {
 							<input className={`form-control ${!this.state.bamFileValid && 'is-invalid'}`} type="file" id="bam-file" onChange={this.uploadBamFile} />
 							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file</a>.</p>}
 						</div>
+
+						<button type="button" className="btn btn-warning mb-3" onClick={this.loadExampleData}>Load Example Data Files</button>
+						{(this.state.bamFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <h6 className="mb-5 text-center text-success">
+							Using example data file(s)!
+						</h6>}
 
 						<div className="accordion accordion-flush mb-4" id="optional-args">
 							<div className="accordion-item">
@@ -357,10 +361,9 @@ export class App extends Component {
 								</div>
 							</div>
 						</div>
-						<button type="button" className="btn btn-warning mt-4 mb-4" onClick={this.loadExampleData}>Load Example Data</button>
 						<button type="button" className="btn btn-primary" onClick={this.runViralConsensus}>Submit</button>
 					</div>
-					<div id="output" className="form-group">
+					<div id="output" className="form-group ms-4 me-5">
 						<label htmlFor="output-text" className="mb-3"><h4>Console</h4></label>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
@@ -368,7 +371,7 @@ export class App extends Component {
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>
-				<footer class="text-center">
+				<footer className="text-center">
 					Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
 					Special thank you to Robert Aboukhalil for his support.<br />
 				</footer>

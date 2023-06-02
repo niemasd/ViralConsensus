@@ -292,7 +292,7 @@ export class App extends Component {
 	render() {
 		return (
 			<div className="App pb-5">
-				<h1 className="mt-4 mb-5 text-center">ViralConsensus Online Tool {this.state.version}</h1>
+				<h1 className="mt-4 mb-5 text-center">ViralConsensus {this.state.version}</h1>
 				<div className="mt-3" id="container">
 					<div id="input" className="ms-5 me-4">
 						<h4 className="mb-3">Input</h4>

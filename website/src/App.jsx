@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-import { CLEAR_LOG, LOG, EXAMPLE_BAM_FILE, EXAMPLE_REF_FILE, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
+import { CLEAR_LOG, LOG, EXAMPLE_ALIGNMENT_FILE, DEFAULT_ALIGNMENT_FILE_NAME, EXAMPLE_REF_FILE, DEFAULT_REF_FILE_NAME, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
 
 import './App.css'
 
@@ -14,10 +14,12 @@ export class App extends Component {
 			version: '',
 
 			refFile: undefined,
-			bamFile: undefined,
+			exampleRefFile: undefined,
+			alignmentFile: undefined,
+			exampleAlignmentFile: undefined,
 			primerFile: undefined,
 			refFileValid: true,
-			bamFileValid: true,
+			alignmentFileValid: true,
 			primerFileValid: true,
 
 			primerOffset: 0,
@@ -57,7 +59,26 @@ export class App extends Component {
 			LOG("ViralConsensus Online Tool loaded.")
 		})
 
+		this.preventNumberInputScrolling();
+		this.fetchExampleFiles();
 		this.loadDefaultsAndVersion();
+	}
+
+	preventNumberInputScrolling = () => {
+		const numberInputs = document.querySelectorAll('input[type=number]');
+		for (const numberInput of numberInputs) {
+			numberInput.addEventListener('wheel', function (e) {
+				e.preventDefault();
+			});
+		}
+	}
+
+	fetchExampleFiles = async () => {
+		const exampleRefFile = await (await fetch(EXAMPLE_REF_FILE)).text();
+		// note: blob is used here because the example file is binary () and mount accepts blob as data value for mount() function
+		const exampleAlignmentFile = await (await fetch(EXAMPLE_ALIGNMENT_FILE)).blob();
+
+		this.setState({ exampleRefFile, exampleAlignmentFile })
 	}
 
 	loadDefaultsAndVersion = async () => {
@@ -73,13 +94,13 @@ export class App extends Component {
 				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]] + "Default"]: defaultValue[2], [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
 			}
 		}
-		
+
 		const version = 'v' + defaultTextFile.matchAll(/#define VERSION.*$/gm).next().value[0].split(' ')[2].replace(/"|'/g, '');
 		this.setState({ version })
 	}
 
-	uploadBamFile = (e) => {
-		this.setState({ bamFile: e.target.files[0], inputChanged: true })
+	uploadAlignmentFile = (e) => {
+		this.setState({ alignmentFile: e.target.files[0], inputChanged: true })
 	}
 
 	uploadRefFile = (e) => {
@@ -144,14 +165,16 @@ export class App extends Component {
 		this.setState({ genInsCounts: e.target.checked, inputChanged: true })
 	}
 
-	loadExampleData = () => {
+	toggleLoadExampleData = () => {
 		this.setState(prevState => {
+			const refFile = prevState.refFile === 'EXAMPLE_DATA' ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
+			const alignmentFile = prevState.alignmentFile === 'EXAMPLE_DATA' ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
 			return {
-				refFile: 'EXAMPLE_DATA',
-				bamFile: 'EXAMPLE_DATA',
+				refFile,
+				alignmentFile,
 				refFileValid: true,
-				bamFileValid: true,
-				inputChanged: prevState.refFile !== 'EXAMPLE_DATA' || prevState.bamFile !== 'EXAMPLE_DATA'
+				alignmentFileValid: true,
+				inputChanged: prevState.refFile !== refFile || prevState.alignmentFile !== alignmentFile
 			}
 		})
 	}
@@ -159,7 +182,7 @@ export class App extends Component {
 	validInput = () => {
 		let valid = true;
 		let refFileValid = true;
-		let bamFileValid = true;
+		let alignmentFileValid = true;
 		// Note: Other input validation is done in the setters
 
 		CLEAR_LOG()
@@ -169,13 +192,13 @@ export class App extends Component {
 			refFileValid = false;
 		}
 
-		if (!this.state.bamFile) {
-			bamFileValid = false;
+		if (!this.state.alignmentFile) {
+			alignmentFileValid = false;
 		}
 
-		valid = refFileValid && bamFileValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
+		valid = refFileValid && alignmentFileValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
 
-		this.setState({ refFileValid, bamFileValid })
+		this.setState({ refFileValid, alignmentFileValid })
 
 		return valid;
 	}
@@ -191,7 +214,22 @@ export class App extends Component {
 		this.setState({ done: false, loading: true, inputChanged: false })
 
 		const CLI = this.state.CLI;
-		let command = `viral_consensus -i ${this.state.bamFile?.name ?? 'alignments.bam'} -r ${this.state.refFile?.name ?? 'ref.fas'} -o consensus.fa`;
+
+		if (CLI === undefined) {
+			setTimeout(() => {
+				this.runViralConsensus();
+			}, 2000)
+			return;
+		}
+
+		// if uploaded fastq, need to run minimap2 first
+		let uploadedFastq = this.state.alignmentFile !== 'EXAMPLE_DATA' &&
+		(this.state.alignmentFile.name.endsWith('.fastq') ||
+		this.state.alignmentFile.name.endsWith('.fq') ||
+		this.state.alignmentFile.name.endsWith('.fastq.gz') ||
+		this.state.alignmentFile.name.endsWith('.fq.gz'));
+
+		let command = `viral_consensus -i ${uploadedFastq ? '-' : (this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
 
 		// Delete old files
 		// TODO: is there a better way to delete a file other than unlink?
@@ -208,33 +246,51 @@ export class App extends Component {
 		}
 
 		// Create example reference fasta file
+		LOG("Writing reference file...")
 		if (this.state.refFile === 'EXAMPLE_DATA') {
-			const refFile = await (await fetch(EXAMPLE_REF_FILE)).text();
 			await CLI.mount({
-				name: 'ref.fas',
-				data: refFile
+				name: DEFAULT_REF_FILE_NAME,
+				data: this.state.exampleRefFile
 			})
-			// await CLI.mount([{ name: "ref.fas", url: EXAMPLE_REF_FILE }])
-			// console.log(await CLI.cat('ref.fas'))
 		} else {
 			await CLI.mount([this.state.refFile])
 		}
 
 		// Create example alignments
-		if (this.state.bamFile === 'EXAMPLE_DATA') {
-			await CLI.mount([{ name: "alignments.bam", url: EXAMPLE_BAM_FILE }])
+		LOG("Writing alignment file...")
+		if (this.state.alignmentFile === 'EXAMPLE_DATA') {
+			await CLI.mount([{
+				name: DEFAULT_ALIGNMENT_FILE_NAME,
+				data: this.state.exampleAlignmentFile
+			}])
+		} else if (this.state.alignmentFile.name.endsWith('.bam') ||
+			this.state.alignmentFile.name.endsWith('.sam') ||
+			this.state.alignmentFile.name.endsWith('.cram')) {
+			// handle bam/sam/cram files, don't need to run minimap2 
+			await CLI.mount([this.state.alignmentFile])
+		} else if (uploadedFastq) {
+			// handle fastq files, need to run minimap2 (already handled in the declaration of command)
+			// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
+			await CLI.mount([this.state.alignmentFile])
+			console.log(await CLI.ls('./'));
+			command = `minimap2 -t 1 -a -x sr ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} ${this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME} | ${command}`;
+			console.log(command)
+			console.log((await CLI.exec(command)));
+			console.log(await CLI.ls('./'));
 		} else {
-			await CLI.mount([this.state.bamFile])
+			// handle other file types, assuming bam/sam/cram, but giving a warning
+			LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
+			await CLI.mount([this.state.alignmentFile])
 		}
 
 		// Create example primer file
 		if (this.state.primerFile) {
 			const fileReader = new FileReader();
 			fileReader.onload = async () => {
+				CLI.ls(this.state.primerFile.name) && await CLI.fs.unlink(this.state.primerFile.name);
 				await CLI.fs.writeFile(this.state.primerFile.name, new Uint8Array(fileReader.result));
 			}
 			fileReader.readAsArrayBuffer(this.state.primerFile);
-			// TODO: make validation works
 			command += ` -p ${this.state.primerFile.name} -po ${this.state.primerOffset}`;
 		}
 
@@ -297,23 +353,20 @@ export class App extends Component {
 					<div id="input" className="ms-5 me-4">
 						<h4 className="mb-3">Input</h4>
 						<div className="d-flex flex-column mb-4">
-							<label htmlFor="reference-file" className="form-label">Reference File <span className="text-danger">*</span></label>
+							<label htmlFor="reference-file" className="form-label">Reference File (FASTA){this.state.refFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</strong></span>}<span className="text-danger"> *</span></label>
 							<input className={`form-control ${!this.state.refFileValid && 'is-invalid'}`} type="file" id="reference-file" onChange={this.uploadRefFile} />
-							{this.state.refFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</p>}
 						</div>
 
 						<div className="d-flex flex-column mb-4">
-							<label htmlFor="bam-file" className="form-label">Input BAM File <span className="text-danger">*</span></label>
-							<input className={`form-control ${!this.state.bamFileValid && 'is-invalid'}`} type="file" id="bam-file" onChange={this.uploadBamFile} />
-							{this.state.bamFile === 'EXAMPLE_DATA' && <p className="mb-0">Using example <a href={EXAMPLE_BAM_FILE} target="_blank" rel="noreferrer">BAM file</a>.</p>}
+							<label htmlFor="alignment-file" className="form-label">Input Reads File (BAM, SAM, CRAM, FASTQ){this.state.alignmentFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+							<input className={`form-control ${!this.state.alignmentFileValid && 'is-invalid'}`} type="file" accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-file" onChange={this.uploadAlignmentFile} />
 						</div>
 
-						<button type="button" className="btn btn-warning mb-3" onClick={this.loadExampleData}>Load Example Data Files</button>
-						{(this.state.bamFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <h6 className="mb-5 text-center text-success">
-							Using example data file(s)!
-						</h6>}
+						<button type="button" className={`btn btn-${(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
+							Load Example Data Files {(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
+						</button>
 
-						<div className="accordion accordion-flush mb-4" id="optional-args">
+						<div className="accordion accordion-flush my-5" id="optional-args">
 							<div className="accordion-item">
 								<h2 className="accordion-header">
 									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opt-args-collapse" aria-expanded="false" aria-controls="opt-args-collapse">

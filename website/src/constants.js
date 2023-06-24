@@ -1,6 +1,8 @@
 export const OUTPUT_ID = "output-text";
 export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/NC_045512.2.fas";
-export const EXAMPLE_BAM_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
+export const DEFAULT_REF_FILE_NAME = 'ref.fas';
+export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
+export const DEFAULT_ALIGNMENT_FILE_NAME = 'alignments.bam';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {
     "DEFAULT_MIN_QUAL": "minBaseQuality",

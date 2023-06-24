@@ -167,8 +167,8 @@ export class App extends Component {
 
 	toggleLoadExampleData = () => {
 		this.setState(prevState => {
-			const refFile = prevState.refFile === 'EXAMPLE_DATA' ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
-			const alignmentFile = prevState.alignmentFile === 'EXAMPLE_DATA' ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
+			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
+			const alignmentFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
 			return {
 				refFile,
 				alignmentFile,
@@ -224,10 +224,10 @@ export class App extends Component {
 
 		// if uploaded fastq, need to run minimap2 first
 		let uploadedFastq = this.state.alignmentFile !== 'EXAMPLE_DATA' &&
-		(this.state.alignmentFile.name.endsWith('.fastq') ||
-		this.state.alignmentFile.name.endsWith('.fq') ||
-		this.state.alignmentFile.name.endsWith('.fastq.gz') ||
-		this.state.alignmentFile.name.endsWith('.fq.gz'));
+			(this.state.alignmentFile.name.endsWith('.fastq') ||
+				this.state.alignmentFile.name.endsWith('.fq') ||
+				this.state.alignmentFile.name.endsWith('.fastq.gz') ||
+				this.state.alignmentFile.name.endsWith('.fq.gz'));
 
 		let command = `viral_consensus -i ${uploadedFastq ? '-' : (this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
 
@@ -246,6 +246,7 @@ export class App extends Component {
 		}
 
 		// Create example reference fasta file
+		// DISCUSS: These mounts are taking a long time when from disk, (few seconds)
 		LOG("Writing reference file...")
 		if (this.state.refFile === 'EXAMPLE_DATA') {
 			await CLI.mount({
@@ -253,7 +254,14 @@ export class App extends Component {
 				data: this.state.exampleRefFile
 			})
 		} else {
-			await CLI.mount([this.state.refFile])
+			const fileReader = new FileReader();
+			fileReader.onload = async () => {
+				await CLI.mount({
+					name: this.state.refFile.name,
+					data: fileReader.result
+				})
+			}
+			fileReader.readAsText(this.state.refFile);
 		}
 
 		// Create example alignments
@@ -263,24 +271,28 @@ export class App extends Component {
 				name: DEFAULT_ALIGNMENT_FILE_NAME,
 				data: this.state.exampleAlignmentFile
 			}])
-		} else if (this.state.alignmentFile.name.endsWith('.bam') ||
-			this.state.alignmentFile.name.endsWith('.sam') ||
-			this.state.alignmentFile.name.endsWith('.cram')) {
-			// handle bam/sam/cram files, don't need to run minimap2 
-			await CLI.mount([this.state.alignmentFile])
-		} else if (uploadedFastq) {
-			// handle fastq files, need to run minimap2 (already handled in the declaration of command)
-			// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
-			await CLI.mount([this.state.alignmentFile])
-			console.log(await CLI.ls('./'));
-			command = `minimap2 -t 1 -a -x sr ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} ${this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME} | ${command}`;
-			console.log(command)
-			console.log((await CLI.exec(command)));
-			console.log(await CLI.ls('./'));
 		} else {
-			// handle other file types, assuming bam/sam/cram, but giving a warning
-			LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
-			await CLI.mount([this.state.alignmentFile])
+			const fileReader = new FileReader();
+			fileReader.onload = async () => {
+				await CLI.fs.writeFile(this.state.alignmentFile.name, new Uint8Array(fileReader.result));
+				if (this.state.alignmentFile.name.endsWith('.bam') ||
+					this.state.alignmentFile.name.endsWith('.sam') ||
+					this.state.alignmentFile.name.endsWith('.cram')) {
+					// handle bam/sam/cram files, don't need to run minimap2 
+				} else if (uploadedFastq) {
+					// handle fastq files, need to run minimap2 (already handled in the declaration of command)
+					// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
+					console.log(await CLI.ls('./'));
+					command = `minimap2 -t 1 -a -x sr ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} ${this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME} | ${command}`;
+					console.log(command)
+					console.log((await CLI.exec(command)));
+					console.log(await CLI.ls('./'));
+				} else {
+					// handle other file types, assuming bam/sam/cram, but giving a warning
+					LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
+				}
+			}
+			fileReader.readAsArrayBuffer(this.state.alignmentFile);
 		}
 
 		// Create example primer file
@@ -308,16 +320,21 @@ export class App extends Component {
 
 		// Generate consensus genome
 		LOG("Executing command: " + command)
-		await CLI.exec(command);
-		const consensusFile = await CLI.ls('consensus.fa');
-		if (!consensusFile || consensusFile.size === 0) {
-			LOG("Error: No consensus genome generated. Please check your input files.")
-			this.setState({ loading: false })
-			return;
-		}
+		const runViralConsensus = setInterval(async () => {
+			if ((this.state.alignmentFile === 'EXAMPLE_DATA' || await CLI.ls(this.state.alignmentFile.name)) && (this.state.refFile === 'EXAMPLE_DATA' || await CLI.ls(this.state.refFile.name))) {
+				clearInterval(runViralConsensus);
+				await CLI.exec(command);
+				const consensusFile = await CLI.ls('consensus.fa');
+				if (!consensusFile || consensusFile.size === 0) {
+					LOG("Error: No consensus genome generated. Please check your input files.")
+					this.setState({ loading: false })
+					return;
+				}
 
-		this.setState({ done: true, loading: false })
-		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
+				this.setState({ done: true, loading: false })
+				LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
+			}
+		}, 100)
 	}
 
 	downloadConsensus = async () => {

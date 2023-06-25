@@ -15,11 +15,17 @@ export class App extends Component {
 
 			refFile: undefined,
 			exampleRefFile: undefined,
-			alignmentFile: undefined,
-			exampleAlignmentFile: undefined,
-			primerFile: undefined,
 			refFileValid: true,
+
+			alignmentFile: undefined,
+			alignmentFileIsFASTQ: false,
 			alignmentFileValid: true,
+			exampleAlignmentFile: undefined,
+
+			alignmentSecondFile: undefined,
+			alignmentSecondFileValid: true,
+
+			primerFile: undefined,
 			primerFileValid: true,
 
 			primerOffset: 0,
@@ -99,12 +105,25 @@ export class App extends Component {
 		this.setState({ version })
 	}
 
-	uploadAlignmentFile = (e) => {
-		this.setState({ alignmentFile: e.target.files[0], inputChanged: true })
+	uploadRefFile = (e) => {
+		this.setState({ refFile: e.target.files[0], refFileValid: true, inputChanged: true })
 	}
 
-	uploadRefFile = (e) => {
-		this.setState({ refFile: e.target.files[0], inputChanged: true })
+	uploadAlignmentFile = (e) => {
+		this.setState({
+			alignmentFile: e.target.files[0],
+			alignmentFileValid: true,
+			inputChanged: true,
+			alignmentFileIsFASTQ:
+				e.target.files[0].name.endsWith('.fastq') ||
+				e.target.files[0].name.endsWith('.fq') ||
+				e.target.files[0].name.endsWith('.fastq.gz') ||
+				e.target.files[0].name.endsWith('.fq.gz')
+		})
+	}
+
+	uploadAlignmentSecondFile = (e) => {
+		this.setState({ alignmentSecondFile: e.target.files[0], alignmentSecondFileValid: true, inputChanged: true })
 	}
 
 	uploadPrimerFile = (e) => {
@@ -169,9 +188,11 @@ export class App extends Component {
 		this.setState(prevState => {
 			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
 			const alignmentFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
+			const alignmentFileIsFASTQ = (alignmentFile === 'EXAMPLE_DATA') ? false : prevState.alignmentFileIsFASTQ;
 			return {
 				refFile,
 				alignmentFile,
+				alignmentFileIsFASTQ,
 				refFileValid: true,
 				alignmentFileValid: true,
 				inputChanged: prevState.refFile !== refFile || prevState.alignmentFile !== alignmentFile
@@ -222,17 +243,10 @@ export class App extends Component {
 			return;
 		}
 
-		// if uploaded fastq, need to run minimap2 first
-		let uploadedFastq = this.state.alignmentFile !== 'EXAMPLE_DATA' &&
-			(this.state.alignmentFile.name.endsWith('.fastq') ||
-				this.state.alignmentFile.name.endsWith('.fq') ||
-				this.state.alignmentFile.name.endsWith('.fastq.gz') ||
-				this.state.alignmentFile.name.endsWith('.fq.gz'));
-
-		let command = `viral_consensus -i ${uploadedFastq ? '-' : (this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
+		console.log(this.state.alignmentFileIsFASTQ)
+		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? '-' : (this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
 
 		// Delete old files
-		// TODO: is there a better way to delete a file other than unlink?
 		if (await CLI.ls('consensus.fa')) {
 			await CLI.fs.unlink('consensus.fa');
 		}
@@ -247,62 +261,58 @@ export class App extends Component {
 
 		// Create example reference fasta file
 		// DISCUSS: These mounts are taking a long time when from disk, (few seconds)
-		LOG("Writing reference file...")
 		if (this.state.refFile === 'EXAMPLE_DATA') {
 			await CLI.mount({
 				name: DEFAULT_REF_FILE_NAME,
 				data: this.state.exampleRefFile
 			})
 		} else {
-			const fileReader = new FileReader();
-			fileReader.onload = async () => {
-				await CLI.mount({
-					name: this.state.refFile.name,
-					data: fileReader.result
-				})
-			}
-			fileReader.readAsText(this.state.refFile);
+			await CLI.mount({
+				name: this.state.refFile.name,
+				data: await this.fileReaderReadFile(this.state.refFile)
+			})
 		}
+		LOG("Wrote reference file...")
 
 		// Create example alignments
-		LOG("Writing alignment file...")
 		if (this.state.alignmentFile === 'EXAMPLE_DATA') {
 			await CLI.mount([{
 				name: DEFAULT_ALIGNMENT_FILE_NAME,
 				data: this.state.exampleAlignmentFile
 			}])
 		} else {
-			const fileReader = new FileReader();
-			fileReader.onload = async () => {
-				await CLI.fs.writeFile(this.state.alignmentFile.name, new Uint8Array(fileReader.result));
-				if (this.state.alignmentFile.name.endsWith('.bam') ||
-					this.state.alignmentFile.name.endsWith('.sam') ||
-					this.state.alignmentFile.name.endsWith('.cram')) {
-					// handle bam/sam/cram files, don't need to run minimap2 
-				} else if (uploadedFastq) {
-					// handle fastq files, need to run minimap2 (already handled in the declaration of command)
-					// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
+			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFile, true);
+			await CLI.fs.writeFile(this.state.alignmentFile.name, new Uint8Array(alignmentFileData));
+			if (this.state.alignmentFile.name.endsWith('.bam') ||
+				this.state.alignmentFile.name.endsWith('.sam') ||
+				this.state.alignmentFile.name.endsWith('.cram')) {
+				// handle bam/sam/cram files, don't need to run minimap2 
+			} else if (this.state.alignmentFileIsFASTQ) {
+				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
+				// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
+
+				// TODO: check if second fastq file is provided and if so, run minimap2 with both files 
+				if (this.state.alignmentSecondFile) {
+					const secondFileData = await this.fileReaderReadFile(this.state.alignmentSecondFile, true);
+					await CLI.fs.writeFile(this.state.alignmentSecondFile.name, new Uint8Array(secondFileData));
+				} else {
 					console.log(await CLI.ls('./'));
 					command = `minimap2 -t 1 -a -x sr ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} ${this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME} | ${command}`;
 					console.log(command)
 					console.log((await CLI.exec(command)));
 					console.log(await CLI.ls('./'));
-				} else {
-					// handle other file types, assuming bam/sam/cram, but giving a warning
-					LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
 				}
+			} else {
+				// handle other file types, assuming bam/sam/cram, but giving a warning
+				LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
 			}
-			fileReader.readAsArrayBuffer(this.state.alignmentFile);
 		}
+		LOG("Wrote alignment file...")
 
 		// Create example primer file
 		if (this.state.primerFile) {
-			const fileReader = new FileReader();
-			fileReader.onload = async () => {
-				CLI.ls(this.state.primerFile.name) && await CLI.fs.unlink(this.state.primerFile.name);
-				await CLI.fs.writeFile(this.state.primerFile.name, new Uint8Array(fileReader.result));
-			}
-			fileReader.readAsArrayBuffer(this.state.primerFile);
+			const primerFileData = await this.fileReaderReadFile(this.state.primerFile, true);
+			await CLI.fs.writeFile(this.state.primerFile.name, new Uint8Array(primerFileData));
 			command += ` -p ${this.state.primerFile.name} -po ${this.state.primerOffset}`;
 		}
 
@@ -335,6 +345,21 @@ export class App extends Component {
 				LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
 			}
 		}, 100)
+	}
+
+	// helper function to read file as text or arraybuffer and promisify
+	fileReaderReadFile = async (file, asArrayBuffer = false) => {
+		return new Promise((resolve, reject) => {
+			const fileReader = new FileReader();
+			fileReader.onload = () => {
+				resolve(fileReader.result);
+			}
+			if (asArrayBuffer) {
+				fileReader.readAsArrayBuffer(file);
+			} else {
+				fileReader.readAsText(file);
+			}
+		})
 	}
 
 	downloadConsensus = async () => {
@@ -377,6 +402,11 @@ export class App extends Component {
 						<div className="d-flex flex-column mb-4">
 							<label htmlFor="alignment-file" className="form-label">Input Reads File (BAM, SAM, CRAM, FASTQ){this.state.alignmentFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
 							<input className={`form-control ${!this.state.alignmentFileValid && 'is-invalid'}`} type="file" accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-file" onChange={this.uploadAlignmentFile} />
+						</div>
+
+						<div className="d-flex flex-column mb-4" style={{ opacity: this.state.alignmentFileIsFASTQ ? 1 : 0.5 }}>
+							<label htmlFor="alignment-second-file" className="form-label">Second Input Reads File (Second FASTQ File)</label>
+							<input className={`form-control ${!this.state.alignmentSecondFileValid && 'is-invalid'}`} disabled={!this.state.alignmentFileIsFASTQ} type="file" accept=".fastq,.fastq.gz,.fq,.fq.gz" id="alignment-second-file" onChange={this.uploadAlignmentSecondFile} />
 						</div>
 
 						<button type="button" className={`btn btn-${(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>

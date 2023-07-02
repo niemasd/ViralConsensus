@@ -3,6 +3,7 @@ export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/Viral
 export const DEFAULT_REF_FILE_NAME = 'ref.fas';
 export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
 export const DEFAULT_ALIGNMENT_FILE_NAME = 'alignments.bam';
+export const MINIMAP_OUTPUT_FILE_NAME = 'alignments.sam';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {
     "DEFAULT_MIN_QUAL": "minBaseQuality",
@@ -21,6 +22,15 @@ export const LOG = (output) => {
     const textArea = document.getElementById(OUTPUT_ID);
     const date = new Date();
     textArea.value += `${getTimeWithMilliseconds(date)}: ` + output + "\n";
+}
+
+export const IS_FASTQ = (name) => {
+	return name !== undefined && (
+		name.endsWith('.fastq') ||
+		name.endsWith('.fq') ||
+		name.endsWith('.fastq.gz') ||
+		name.endsWith('.fq.gz')
+	);
 }
 
 export const getTimeWithMilliseconds = date => {

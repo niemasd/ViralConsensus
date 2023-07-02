@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 
-import { CLEAR_LOG, LOG, EXAMPLE_ALIGNMENT_FILE, DEFAULT_ALIGNMENT_FILE_NAME, EXAMPLE_REF_FILE, DEFAULT_REF_FILE_NAME, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING } from './constants'
+import { CLEAR_LOG, LOG, EXAMPLE_ALIGNMENT_FILE, DEFAULT_ALIGNMENT_FILE_NAME, MINIMAP_OUTPUT_FILE_NAME, EXAMPLE_REF_FILE, DEFAULT_REF_FILE_NAME, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING, IS_FASTQ } from './constants'
 
 import './App.css'
 
@@ -59,7 +59,9 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"])
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], {
+				printInterleaved: false
+			})
 		}, () => {
 			CLEAR_LOG()
 			LOG("ViralConsensus Online Tool loaded.")
@@ -114,11 +116,7 @@ export class App extends Component {
 			alignmentFile: e.target.files[0],
 			alignmentFileValid: true,
 			inputChanged: true,
-			alignmentFileIsFASTQ:
-				e.target.files[0].name.endsWith('.fastq') ||
-				e.target.files[0].name.endsWith('.fq') ||
-				e.target.files[0].name.endsWith('.fastq.gz') ||
-				e.target.files[0].name.endsWith('.fq.gz')
+			alignmentFileIsFASTQ: IS_FASTQ(e.target.files[0]?.name)
 		})
 	}
 
@@ -188,7 +186,7 @@ export class App extends Component {
 		this.setState(prevState => {
 			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
 			const alignmentFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
-			const alignmentFileIsFASTQ = (alignmentFile === 'EXAMPLE_DATA') ? false : prevState.alignmentFileIsFASTQ;
+			const alignmentFileIsFASTQ = (alignmentFile === 'EXAMPLE_DATA') ? false : IS_FASTQ(document.getElementById('alignment-file')?.files[0]?.name);
 			return {
 				refFile,
 				alignmentFile,
@@ -243,8 +241,13 @@ export class App extends Component {
 			return;
 		}
 
-		console.log(this.state.alignmentFileIsFASTQ)
-		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? '-' : (this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
+		// Remove spaces from file name
+		const refFileName = this.state?.refFile?.name?.replace(/\s/g, '_') ?? DEFAULT_REF_FILE_NAME;
+		const alignmentFileName = this.state?.alignmentFile?.name?.replace(/\s/g, '_') ?? DEFAULT_ALIGNMENT_FILE_NAME;
+		const alignmentSecondFileName = this.state?.alignmentSecondFile?.name?.replace(/\s/g, '_');
+		const primerFileName = this.state?.primerFile?.name?.replace(/\s/g, '_');
+
+		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? MINIMAP_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
 
 		// Delete old files
 		if (await CLI.ls('consensus.fa')) {
@@ -268,7 +271,7 @@ export class App extends Component {
 			})
 		} else {
 			await CLI.mount({
-				name: this.state.refFile.name,
+				name: refFileName,
 				data: await this.fileReaderReadFile(this.state.refFile)
 			})
 		}
@@ -282,25 +285,26 @@ export class App extends Component {
 			}])
 		} else {
 			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFile, true);
-			await CLI.fs.writeFile(this.state.alignmentFile.name, new Uint8Array(alignmentFileData));
-			if (this.state.alignmentFile.name.endsWith('.bam') ||
-				this.state.alignmentFile.name.endsWith('.sam') ||
-				this.state.alignmentFile.name.endsWith('.cram')) {
+			await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData));
+			if (alignmentFileName.endsWith('.bam') ||
+				alignmentFileName.endsWith('.sam') ||
+				alignmentFileName.endsWith('.cram')) {
 				// handle bam/sam/cram files, don't need to run minimap2 
 			} else if (this.state.alignmentFileIsFASTQ) {
 				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
-				// TODO: doesn't work yet, minimap2 works but the pipe returns an error of [ERROR] unknown option in "viral_consensus"
+				LOG("Recognized alignment file (" + alignmentFileName + ") as FASTQ, running minimap2...")
 
 				// TODO: check if second fastq file is provided and if so, run minimap2 with both files 
 				if (this.state.alignmentSecondFile) {
 					const secondFileData = await this.fileReaderReadFile(this.state.alignmentSecondFile, true);
-					await CLI.fs.writeFile(this.state.alignmentSecondFile.name, new Uint8Array(secondFileData));
+					await CLI.fs.writeFile(alignmentSecondFileName, new Uint8Array(secondFileData));
 				} else {
-					console.log(await CLI.ls('./'));
-					command = `minimap2 -t 1 -a -x sr ${this.state.refFile?.name ?? DEFAULT_REF_FILE_NAME} ${this.state.alignmentFile?.name ?? DEFAULT_ALIGNMENT_FILE_NAME} | ${command}`;
-					console.log(command)
-					console.log((await CLI.exec(command)));
-					console.log(await CLI.ls('./'));
+					const minimapCommand = `minimap2 -t 1 -a -x sr ${refFileName ?? DEFAULT_REF_FILE_NAME} ${alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME}`;
+					const minimapSAMOutput = (await CLI.exec(minimapCommand)).stdout;
+					await CLI.mount({
+						name: MINIMAP_OUTPUT_FILE_NAME,
+						data: minimapSAMOutput
+					})
 				}
 			} else {
 				// handle other file types, assuming bam/sam/cram, but giving a warning
@@ -312,8 +316,8 @@ export class App extends Component {
 		// Create example primer file
 		if (this.state.primerFile) {
 			const primerFileData = await this.fileReaderReadFile(this.state.primerFile, true);
-			await CLI.fs.writeFile(this.state.primerFile.name, new Uint8Array(primerFileData));
-			command += ` -p ${this.state.primerFile.name} -po ${this.state.primerOffset}`;
+			await CLI.fs.writeFile(primerFileName, new Uint8Array(primerFileData));
+			command += ` -p ${primerFileName} -po ${this.state.primerOffset}`;
 		}
 
 		// Set parameters
@@ -330,21 +334,21 @@ export class App extends Component {
 
 		// Generate consensus genome
 		LOG("Executing command: " + command)
-		const runViralConsensus = setInterval(async () => {
-			if ((this.state.alignmentFile === 'EXAMPLE_DATA' || await CLI.ls(this.state.alignmentFile.name)) && (this.state.refFile === 'EXAMPLE_DATA' || await CLI.ls(this.state.refFile.name))) {
-				clearInterval(runViralConsensus);
-				await CLI.exec(command);
-				const consensusFile = await CLI.ls('consensus.fa');
-				if (!consensusFile || consensusFile.size === 0) {
-					LOG("Error: No consensus genome generated. Please check your input files.")
-					this.setState({ loading: false })
-					return;
-				}
+		const commandError = await CLI.exec(command);
+		if (commandError.stdout !== '') {
+			LOG("Error: " + commandError.stderr);
+			this.setState({ loading: false })
+			return;
+		}
+		const consensusFile = await CLI.ls('consensus.fa');
+		if (!consensusFile || consensusFile.size === 0) {
+			LOG("Error: No consensus genome generated. Please check your input files.")
+			this.setState({ loading: false })
+			return;
+		}
 
-				this.setState({ done: true, loading: false })
-				LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
-			}
-		}, 100)
+		this.setState({ done: true, loading: false })
+		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
 	}
 
 	// helper function to read file as text or arraybuffer and promisify

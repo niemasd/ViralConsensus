@@ -3,7 +3,9 @@ export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/Viral
 export const DEFAULT_REF_FILE_NAME = 'ref.fas';
 export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
 export const DEFAULT_ALIGNMENT_FILE_NAME = 'alignments.bam';
-export const MINIMAP_OUTPUT_FILE_NAME = 'alignments.sam';
+export const MINIMAP_OUTPUT_FILE_NAME = 'reads.sam';
+// TODO: change back to CRAM when we can support it
+export const SAMTOOLS_OUTPUT_FILE_NAME = 'mapped_reads.bam';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {
     "DEFAULT_MIN_QUAL": "minBaseQuality",
@@ -35,5 +37,5 @@ export const IS_FASTQ = (name) => {
 
 export const getTimeWithMilliseconds = date => {
     const t = date.toLocaleTimeString();
-    return `${t.substring(0, 7)}.${("0" + date.getMilliseconds()).slice(-3)}`;
+    return `${t.substring(0, 7)}.${("00" + date.getMilliseconds()).slice(-3)}`;
 }

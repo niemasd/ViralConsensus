@@ -1,6 +1,18 @@
 import React, { Component } from 'react'
 
-import { CLEAR_LOG, LOG, EXAMPLE_ALIGNMENT_FILE, DEFAULT_ALIGNMENT_FILE_NAME, MINIMAP_OUTPUT_FILE_NAME, EXAMPLE_REF_FILE, DEFAULT_REF_FILE_NAME, DEFAULT_VALS_FILE, DEFAULT_VALS_MAPPING, IS_FASTQ } from './constants'
+import {
+	CLEAR_LOG,
+	LOG,
+	EXAMPLE_ALIGNMENT_FILE,
+	DEFAULT_ALIGNMENT_FILE_NAME,
+	MINIMAP_OUTPUT_FILE_NAME,
+	SAMTOOLS_OUTPUT_FILE_NAME,
+	EXAMPLE_REF_FILE,
+	DEFAULT_REF_FILE_NAME,
+	DEFAULT_VALS_FILE,
+	DEFAULT_VALS_MAPPING,
+	IS_FASTQ
+} from './constants'
 
 import './App.css'
 
@@ -59,8 +71,8 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "fastp/0.20.1"], {
-				printInterleaved: false
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "samtools/1.10"], {
+				printInterleaved: false,
 			})
 		}, () => {
 			CLEAR_LOG()
@@ -112,16 +124,21 @@ export class App extends Component {
 	}
 
 	uploadAlignmentFile = (e) => {
+		if (!IS_FASTQ(e.target.files[0]?.name)) {
+			document.getElementById('alignment-second-file').value = null;
+		}
+
 		this.setState({
 			alignmentFile: e.target.files[0],
 			alignmentFileValid: true,
 			inputChanged: true,
-			alignmentFileIsFASTQ: IS_FASTQ(e.target.files[0]?.name)
+			alignmentFileIsFASTQ: IS_FASTQ(e.target.files[0]?.name),
+			alignmentSecondFile: IS_FASTQ(e.target.files[0]?.name) ? undefined : this.state.alignmentSecondFile,
 		})
 	}
 
 	uploadAlignmentSecondFile = (e) => {
-		this.setState({ alignmentSecondFile: e.target.files[0], alignmentSecondFileValid: true, inputChanged: true })
+		this.setState({ alignmentSecondFile: e.target.files[0], alignmentSecondFileValid: e.target.files[0] === undefined || IS_FASTQ(e.target.files[0]?.name), inputChanged: true })
 	}
 
 	uploadPrimerFile = (e) => {
@@ -229,7 +246,7 @@ export class App extends Component {
 		}
 
 		const startTime = performance.now();
-		LOG("Running ViralConsensus...")
+		LOG("Starting job...")
 		this.setState({ done: false, loading: true, inputChanged: false })
 
 		const CLI = this.state.CLI;
@@ -247,21 +264,13 @@ export class App extends Component {
 		const alignmentSecondFileName = this.state?.alignmentSecondFile?.name?.replace(/\s/g, '_');
 		const primerFileName = this.state?.primerFile?.name?.replace(/\s/g, '_');
 
-		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? MINIMAP_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName ?? DEFAULT_REF_FILE_NAME} -o consensus.fa`;
+		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o consensus.fa`;
 
 		// Delete old files
-		if (await CLI.ls('consensus.fa')) {
-			await CLI.fs.unlink('consensus.fa');
-		}
+		LOG("Deleting old files...")
+		await this.clearFiles();
 
-		if (await CLI.ls('positionCounts.tsv')) {
-			await CLI.fs.unlink('positionCounts.tsv');
-		}
-
-		if (await CLI.ls('insertionCounts.tsv')) {
-			await CLI.fs.unlink('insertionCounts.tsv');
-		}
-
+		LOG("Reading reference file...")
 		// Create example reference fasta file
 		// DISCUSS: These mounts are taking a long time when from disk, (few seconds)
 		if (this.state.refFile === 'EXAMPLE_DATA') {
@@ -275,9 +284,9 @@ export class App extends Component {
 				data: await this.fileReaderReadFile(this.state.refFile)
 			})
 		}
-		LOG("Wrote reference file...")
 
 		// Create example alignments
+		LOG("Reading alignment file...")
 		if (this.state.alignmentFile === 'EXAMPLE_DATA') {
 			await CLI.mount([{
 				name: DEFAULT_ALIGNMENT_FILE_NAME,
@@ -290,28 +299,33 @@ export class App extends Component {
 				alignmentFileName.endsWith('.sam') ||
 				alignmentFileName.endsWith('.cram')) {
 				// handle bam/sam/cram files, don't need to run minimap2 
+				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM...")
 			} else if (this.state.alignmentFileIsFASTQ) {
 				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
-				LOG("Recognized alignment file (" + alignmentFileName + ") as FASTQ, running minimap2...")
+				LOG("Recognized alignment file (" + alignmentFileName + ") as FASTQ, reading file...")
 
-				// TODO: check if second fastq file is provided and if so, run minimap2 with both files 
 				if (this.state.alignmentSecondFile) {
+					LOG("Recognized second alignment file as FASTQ, reading file...")
 					const secondFileData = await this.fileReaderReadFile(this.state.alignmentSecondFile, true);
 					await CLI.fs.writeFile(alignmentSecondFileName, new Uint8Array(secondFileData));
-				} else {
-					const minimapCommand = `minimap2 -t 1 -a -x sr ${refFileName ?? DEFAULT_REF_FILE_NAME} ${alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME}`;
-					const minimapSAMOutput = (await CLI.exec(minimapCommand)).stdout;
-					await CLI.mount({
-						name: MINIMAP_OUTPUT_FILE_NAME,
-						data: minimapSAMOutput
-					})
 				}
+
+				// await CLI.fs.writeFile(MINIMAP_OUTPUT_FILE_NAME, new Uint8Array());
+				const minimapCommand = `minimap2 -t 1 -a -x sr -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}${alignmentSecondFileName ? ' ' + alignmentSecondFileName : ''}`;
+				LOG("Executing command: " + minimapCommand);
+				await CLI.exec(minimapCommand);
+
+				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				// await CLI.fs.writeFile(SAMTOOLS_OUTPUT_FILE_NAME, new Uint8Array());
+				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				LOG("Executing command: " + samToolsCommand);
+				await CLI.exec(samToolsCommand);
 			} else {
 				// handle other file types, assuming bam/sam/cram, but giving a warning
 				LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
 			}
 		}
-		LOG("Wrote alignment file...")
 
 		// Create example primer file
 		if (this.state.primerFile) {
@@ -335,7 +349,8 @@ export class App extends Component {
 		// Generate consensus genome
 		LOG("Executing command: " + command)
 		const commandError = await CLI.exec(command);
-		if (commandError.stdout !== '') {
+		if (commandError.stderr !== '') {
+			console.log(commandError)
 			LOG("Error: " + commandError.stderr);
 			this.setState({ loading: false })
 			return;
@@ -373,22 +388,42 @@ export class App extends Component {
 	}
 
 	downloadFile = async (fileName) => {
-
 		const CLI = this.state.CLI;
 		if (!(await CLI.ls(fileName))) {
 			return;
 		}
 
-		const fileBlob = await CLI.download(fileName);
+		const fileBlob = new Blob([await CLI.fs.readFile(fileName, { encoding: 'binary' })], { type: 'application/octet-stream' });
+		var objectUrl = URL.createObjectURL(fileBlob);
 
 		const element = document.createElement("a");
-		element.href = fileBlob;
+		element.href = objectUrl;
 		element.download = fileName;
 		document.body.appendChild(element);
 		element.click();
 		document.body.removeChild(element);
 
 		LOG(`Downloaded ${fileName}`)
+	}
+
+	clearFiles = async () => {
+		const CLI = this.state.CLI;
+		const files = await CLI.ls('./');
+		const fileDeletePromises = [];
+		for (const file of files) {
+			if (file === '.' || file === '..' || file === 'consensus.fa' || file === 'positionCounts.tsv' || file === 'insertionCounts.tsv') {
+				continue;
+			} else {
+				fileDeletePromises.push(this.deleteFile(file));
+			}
+		}
+		await Promise.all(fileDeletePromises);
+	}
+
+	deleteFile = async (file) => {
+		// DISCUSS: interesting unlink behavior
+		await this.state.CLI.fs.truncate(file, 0);
+		// await this.state.CLI.fs.unlink(file);
 	}
 
 	render() {

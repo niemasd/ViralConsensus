@@ -2,6 +2,16 @@
 viral_consensus
 viral_consensus_debug
 
+# input files
+*.sam
+*.bam
+*.cram
+
+# output files
+*.json
+*.tsv
+*.fa
+
 # Prerequisites
 *.d
 

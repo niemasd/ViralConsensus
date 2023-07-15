@@ -5,6 +5,7 @@ tasks down the line:
 - chunking gzipped fastq files 
 - reimplementing CRAM files (instead of BAM)
 - cleaning up code / documentation
+- optimize memory usage / delete empty files
 
 gzip resources:
 https://stackoverflow.com/questions/4507316/zlib-decompression-client-side

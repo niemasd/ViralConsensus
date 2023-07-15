@@ -71,7 +71,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.1", "minimap2/2.22", "samtools/1.10"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10"], {
 				printInterleaved: false,
 			})
 		}, () => {

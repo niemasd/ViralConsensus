@@ -150,7 +150,21 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
                     if(curr_base_qual >= min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].first))) {
+                        // increment the count of the base at this position
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
+
+                        // increment the insertion count of "" (no insertion) after this position (except the last position)
+                        if(pos < tmp_uint32) {
+                            ins_counts_it = counts.ins_counts.find(pos);
+                            if(ins_counts_it == counts.ins_counts.end()) {
+                                ins_counts_it = counts.ins_counts.emplace(pos, std::unordered_map<std::string, COUNT_T>()).first;
+                            }
+                            ins_counts_pos_it = ins_counts_it->second.find("");
+                            if(ins_counts_pos_it == ins_counts_it->second.end()) {
+                                ins_counts_pos_it = ins_counts_it->second.emplace("", 0).first;
+                            }
+                            ++(ins_counts_pos_it->second);
+                        }
                     }
                     ++qpos; ++pos;
                 }

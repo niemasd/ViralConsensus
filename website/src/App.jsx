@@ -11,10 +11,13 @@ import {
 	DEFAULT_REF_FILE_NAME,
 	DEFAULT_VALS_FILE,
 	DEFAULT_VALS_MAPPING,
-	IS_FASTQ
+	IS_FASTQ,
+	INSERTION_COUNTS_FILE_NAME,
+	POSITION_COUNTS_FILE_NAME,
+	CONSENSUS_FILE_NAME,
 } from './constants'
 
-import './App.css'
+import './App.scss'
 
 import loading from './assets/loading.png'
 
@@ -64,6 +67,9 @@ export class App extends Component {
 			genInsCounts: false,
 			CLI: undefined,
 			done: false,
+			consensusExists: false,
+			posCountsExists: false,
+			insCountsExists: false,
 			loading: false,
 			inputChanged: false
 		}
@@ -247,7 +253,7 @@ export class App extends Component {
 
 		const startTime = performance.now();
 		LOG("Starting job...")
-		this.setState({ done: false, loading: true, inputChanged: false })
+		this.setState({ done: false, loading: true, inputChanged: false, consensusExists: false, posCountsExists: false, insCountsExists: false })
 
 		const CLI = this.state.CLI;
 
@@ -264,7 +270,7 @@ export class App extends Component {
 		const alignmentSecondFileName = this.state?.alignmentSecondFile?.name?.replace(/\s/g, '_');
 		const primerFileName = this.state?.primerFile?.name?.replace(/\s/g, '_');
 
-		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o consensus.fa`;
+		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
 
 		// Delete old files
 		LOG("Deleting old files...")
@@ -339,11 +345,11 @@ export class App extends Component {
 
 		// Set output files
 		if (this.state.genPosCounts) {
-			command += ' -op positionCounts.tsv';
+			command += ' -op ' + POSITION_COUNTS_FILE_NAME;
 		}
 
 		if (this.state.genInsCounts) {
-			command += ' -oi insertionCounts.tsv';
+			command += ' -oi ' + INSERTION_COUNTS_FILE_NAME;
 		}
 
 		// Generate consensus genome
@@ -355,14 +361,17 @@ export class App extends Component {
 			this.setState({ loading: false })
 			return;
 		}
-		const consensusFile = await CLI.ls('consensus.fa');
+		const consensusFile = await CLI.ls(CONSENSUS_FILE_NAME);
 		if (!consensusFile || consensusFile.size === 0) {
 			LOG("Error: No consensus genome generated. Please check your input files.")
 			this.setState({ loading: false })
 			return;
 		}
 
-		this.setState({ done: true, loading: false })
+		const consensusExists = !!consensusFile;
+		const posCountsExists = !!(await CLI.ls(POSITION_COUNTS_FILE_NAME));
+		const insCountsExists = !!(await CLI.ls(INSERTION_COUNTS_FILE_NAME));
+		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, loading: false })
 		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
 	}
 
@@ -382,9 +391,9 @@ export class App extends Component {
 	}
 
 	downloadConsensus = async () => {
-		await this.downloadFile('consensus.fa');
-		await this.downloadFile('positionCounts.tsv');
-		await this.downloadFile('insertionCounts.tsv');
+		await this.downloadFile(CONSENSUS_FILE_NAME);
+		await this.downloadFile(POSITION_COUNTS_FILE_NAME);
+		await this.downloadFile(INSERTION_COUNTS_FILE_NAME);
 	}
 
 	downloadFile = async (fileName) => {
@@ -411,7 +420,7 @@ export class App extends Component {
 		const files = await CLI.ls('./');
 		const fileDeletePromises = [];
 		for (const file of files) {
-			if (file === '.' || file === '..' || file === 'consensus.fa' || file === 'positionCounts.tsv' || file === 'insertionCounts.tsv') {
+			if (file === '.' || file === '..') {
 				continue;
 			} else {
 				fileDeletePromises.push(this.deleteFile(file));
@@ -423,7 +432,7 @@ export class App extends Component {
 	deleteFile = async (file) => {
 		// DISCUSS: interesting unlink behavior
 		await this.state.CLI.fs.truncate(file, 0);
-		// await this.state.CLI.fs.unlink(file);
+		await this.state.CLI.fs.unlink(file);
 	}
 
 	render() {
@@ -506,7 +515,11 @@ export class App extends Component {
 						<label htmlFor="output-text" className="mb-3"><h4>Console</h4></label>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
-						{this.state.done && <button type="button" className={`btn btn-primary mt-4`} onClick={this.downloadConsensus}>Download Output</button>}
+						<div id="download-buttons">
+							{this.state.done && this.state.consensusExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadConsensus}>Download Consensus FASTA</button>}
+							{this.state.done && this.state.posCountsExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadPosCounts}>Download Position Counts</button>}
+							{this.state.done && this.state.insCountsExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadInsCounts}>Download Insertion Counts</button>}
+						</div>
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>

@@ -14,6 +14,9 @@ export const DEFAULT_VALS_MAPPING = {
     "DEFAULT_AMBIG": "ambigSymbol",
     "DEFAULT_PRIMER_OFFSET": "primerOffset",
 }
+export const CONSENSUS_FILE_NAME = 'consensus.fa';
+export const POSITION_COUNTS_FILE_NAME = 'positionCounts.tsv';
+export const INSERTION_COUNTS_FILE_NAME = 'insertionCounts.json';
 
 export const CLEAR_LOG = () => {
     const textArea = document.getElementById(OUTPUT_ID);

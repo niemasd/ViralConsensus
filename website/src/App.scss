@@ -49,6 +49,15 @@
 	align-self: center;
 }
 
+#download-buttons {
+	display: flex;
+	justify-content: space-between;
+}
+
+footer {
+	margin-top: 10vh;
+}
+
 @keyframes loading-anim {
 	0% {
 		transform: rotate(0deg);
@@ -57,8 +66,4 @@
 	100% {
 		transform: rotate(360deg);
 	}
-}
-
-footer {
-	margin-top: 10vh;
 }

@@ -1,3 +1,4 @@
+// TODO: convert FileList to array for input fastq
 import React, { Component } from 'react'
 
 import {
@@ -11,7 +12,7 @@ import {
 	DEFAULT_REF_FILE_NAME,
 	DEFAULT_VALS_FILE,
 	DEFAULT_VALS_MAPPING,
-	IS_FASTQ,
+	ARE_FASTQ,
 	INSERTION_COUNTS_FILE_NAME,
 	POSITION_COUNTS_FILE_NAME,
 	CONSENSUS_FILE_NAME,
@@ -32,13 +33,12 @@ export class App extends Component {
 			exampleRefFile: undefined,
 			refFileValid: true,
 
-			alignmentFile: undefined,
-			alignmentFileIsFASTQ: false,
-			alignmentFileValid: true,
+			alignmentFiles: undefined,
+			alignmentFilesAreFASTQ: false,
+			alignmentFilesValid: true,
 			exampleAlignmentFile: undefined,
 
-			alignmentSecondFile: undefined,
-			alignmentSecondFileValid: true,
+			trimInput: false,
 
 			primerFile: undefined,
 			primerFileValid: true,
@@ -77,7 +77,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -104,7 +104,7 @@ export class App extends Component {
 		// note: blob is used here because the example file is binary () and mount accepts blob as data value for mount() function
 		const exampleAlignmentFile = await (await fetch(EXAMPLE_ALIGNMENT_FILE)).blob();
 
-		this.setState({ exampleRefFile, exampleAlignmentFile })
+		this.setState({ exampleRefFile, exampleAlignmentFile: exampleAlignmentFile })
 	}
 
 	loadDefaultsAndVersion = async () => {
@@ -129,22 +129,31 @@ export class App extends Component {
 		this.setState({ refFile: e.target.files[0], refFileValid: true, inputChanged: true })
 	}
 
-	uploadAlignmentFile = (e) => {
-		if (!IS_FASTQ(e.target.files[0]?.name)) {
-			document.getElementById('alignment-second-file').value = null;
-		}
-
+	// TODO: error handling for multiple alignment files 
+	uploadAlignmentFiles = (e) => {
+		const alignmentFiles = Array.from(e.target.files);
 		this.setState({
-			alignmentFile: e.target.files[0],
-			alignmentFileValid: true,
+			alignmentFiles,
+			alignmentFilesValid: this.validAlignmentFiles(alignmentFiles),
 			inputChanged: true,
-			alignmentFileIsFASTQ: IS_FASTQ(e.target.files[0]?.name),
-			alignmentSecondFile: IS_FASTQ(e.target.files[0]?.name) ? undefined : this.state.alignmentSecondFile,
+			alignmentFilesAreFASTQ: ARE_FASTQ(alignmentFiles),
 		})
 	}
 
-	uploadAlignmentSecondFile = (e) => {
-		this.setState({ alignmentSecondFile: e.target.files[0], alignmentSecondFileValid: e.target.files[0] === undefined || IS_FASTQ(e.target.files[0]?.name), inputChanged: true })
+	validAlignmentFiles = (files) => {
+		if (files.length === 0) {
+			return false;
+		}
+
+		if (files.length === 1) {
+			return true;
+		}
+
+		return ARE_FASTQ(files);
+	}
+
+	setTrimInput = (e) => {
+		this.setState({ trimInput: e.target.checked, inputChanged: true })
 	}
 
 	uploadPrimerFile = (e) => {
@@ -207,16 +216,18 @@ export class App extends Component {
 
 	toggleLoadExampleData = () => {
 		this.setState(prevState => {
-			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
-			const alignmentFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFile === 'EXAMPLE_DATA') ? document.getElementById('alignment-file')?.files[0] : 'EXAMPLE_DATA';
-			const alignmentFileIsFASTQ = (alignmentFile === 'EXAMPLE_DATA') ? false : IS_FASTQ(document.getElementById('alignment-file')?.files[0]?.name);
+			// TODO: might be iffy
+			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFiles === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
+			const alignmentFiles = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFiles === 'EXAMPLE_DATA') ? Array.from(document.getElementById('alignment-files')?.files) : 'EXAMPLE_DATA';
+			const alignmentFilesAreFASTQ = (alignmentFiles === 'EXAMPLE_DATA') ? false : ARE_FASTQ(Array.from(document.getElementById('alignment-files').files));
 			return {
 				refFile,
-				alignmentFile,
-				alignmentFileIsFASTQ,
+				alignmentFiles,
+				alignmentFilesAreFASTQ,
 				refFileValid: true,
-				alignmentFileValid: true,
-				inputChanged: prevState.refFile !== refFile || prevState.alignmentFile !== alignmentFile
+				// TODO: might be iffy
+				alignmentFilesValid: true,
+				inputChanged: prevState.refFile !== refFile || prevState.alignmentFiles !== alignmentFiles
 			}
 		})
 	}
@@ -224,7 +235,7 @@ export class App extends Component {
 	validInput = () => {
 		let valid = true;
 		let refFileValid = true;
-		let alignmentFileValid = true;
+		let alignmentFilesValid = true;
 		// Note: Other input validation is done in the setters
 
 		CLEAR_LOG()
@@ -234,13 +245,13 @@ export class App extends Component {
 			refFileValid = false;
 		}
 
-		if (!this.state.alignmentFile) {
-			alignmentFileValid = false;
+		if (!this.state.alignmentFiles && this.validAlignmentFiles(this.state.alignmentFiles)) {
+			alignmentFilesValid = false;
 		}
 
-		valid = refFileValid && alignmentFileValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
+		valid = refFileValid && alignmentFilesValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
 
-		this.setState({ refFileValid, alignmentFileValid })
+		this.setState({ refFileValid, alignmentFilesValid })
 
 		return valid;
 	}
@@ -266,11 +277,10 @@ export class App extends Component {
 
 		// Remove spaces from file name
 		const refFileName = this.state?.refFile?.name?.replace(/\s/g, '_') ?? DEFAULT_REF_FILE_NAME;
-		const alignmentFileName = this.state?.alignmentFile?.name?.replace(/\s/g, '_') ?? DEFAULT_ALIGNMENT_FILE_NAME;
-		const alignmentSecondFileName = this.state?.alignmentSecondFile?.name?.replace(/\s/g, '_');
+		const alignmentFileName = this.state?.alignmentFiles[0]?.name?.replace(/\s/g, '_') ?? DEFAULT_ALIGNMENT_FILE_NAME;
 		const primerFileName = this.state?.primerFile?.name?.replace(/\s/g, '_');
 
-		let command = `viral_consensus -i ${this.state.alignmentFileIsFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
+		let command = `viral_consensus -i ${this.state.alignmentFilesAreFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
 
 		// Delete old files
 		LOG("Deleting old files...")
@@ -293,34 +303,42 @@ export class App extends Component {
 
 		// Create example alignments
 		LOG("Reading alignment file...")
-		if (this.state.alignmentFile === 'EXAMPLE_DATA') {
+		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
 			await CLI.mount([{
 				name: DEFAULT_ALIGNMENT_FILE_NAME,
 				data: this.state.exampleAlignmentFile
 			}])
 		} else {
-			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFile, true);
+			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFiles[0], true);
 			await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData));
 			if (alignmentFileName.endsWith('.bam') ||
 				alignmentFileName.endsWith('.sam') ||
 				alignmentFileName.endsWith('.cram')) {
 				// handle bam/sam/cram files, don't need to run minimap2 
 				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM...")
-			} else if (this.state.alignmentFileIsFASTQ) {
+			} else if (this.state.alignmentFilesAreFASTQ) {
 				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
 				LOG("Recognized alignment file (" + alignmentFileName + ") as FASTQ, reading file...")
 
-				if (this.state.alignmentSecondFile) {
-					LOG("Recognized second alignment file as FASTQ, reading file...")
-					const secondFileData = await this.fileReaderReadFile(this.state.alignmentSecondFile, true);
-					await CLI.fs.writeFile(alignmentSecondFileName, new Uint8Array(secondFileData));
+				// add additional alignment files (fastq files)
+				let alignmentFileNames = alignmentFileName;
+				let writeFilePromises = [];
+				for (let i = 1; i < this.state.alignmentFiles.length; i++) {
+					const addtionalAlignmentFile = this.state.alignmentFiles[i];
+					const addtionalAlignmentFileData = await this.fileReaderReadFile(addtionalAlignmentFile, true);
+					const addtionalAlignmentFileName = addtionalAlignmentFile.name.replace(/\s/g, '_');
+					writeFilePromises.push(CLI.fs.writeFile(addtionalAlignmentFileName, new Uint8Array(addtionalAlignmentFileData)));
+					alignmentFileNames += " " + addtionalAlignmentFileName;
 				}
+				await Promise.all(writeFilePromises);
 
 				// await CLI.fs.writeFile(MINIMAP_OUTPUT_FILE_NAME, new Uint8Array());
-				const minimapCommand = `minimap2 -t 1 -a -x sr -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}${alignmentSecondFileName ? ' ' + alignmentSecondFileName : ''}`;
+				const minimapCommand = `minimap2 -t 1 -a -x sr -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileNames}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
+				console.log(await CLI.ls(MINIMAP_OUTPUT_FILE_NAME))
 
+				// TODO: uncomment when samtools is updated (1.17 is currently available, but lzma is not supported)
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				// await CLI.fs.writeFile(SAMTOOLS_OUTPUT_FILE_NAME, new Uint8Array());
@@ -432,7 +450,7 @@ export class App extends Component {
 	deleteFile = async (file) => {
 		// DISCUSS: interesting unlink behavior
 		await this.state.CLI.fs.truncate(file, 0);
-		await this.state.CLI.fs.unlink(file);
+		// await this.state.CLI.fs.unlink(file);
 	}
 
 	render() {
@@ -448,24 +466,61 @@ export class App extends Component {
 						</div>
 
 						<div className="d-flex flex-column mb-4">
-							<label htmlFor="alignment-file" className="form-label">Input Reads File (BAM, SAM, CRAM, FASTQ){this.state.alignmentFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
-							<input className={`form-control ${!this.state.alignmentFileValid && 'is-invalid'}`} type="file" accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-file" onChange={this.uploadAlignmentFile} />
+							<label htmlFor="alignment-files" className="form-label">Input Reads File(s) (BAM, SAM, CRAM, FASTQ(s)){this.state.alignmentFiles === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+							<input className={`form-control ${!this.state.alignmentFilesValid && 'is-invalid'}`} type="file" multiple accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-files" onChange={this.uploadAlignmentFiles} />
 						</div>
 
-						<div className="d-flex flex-column mb-4" style={{ opacity: this.state.alignmentFileIsFASTQ ? 1 : 0.5 }}>
-							<label htmlFor="alignment-second-file" className="form-label">Second Input Reads File (Second FASTQ File)</label>
-							<input className={`form-control ${!this.state.alignmentSecondFileValid && 'is-invalid'}`} disabled={!this.state.alignmentFileIsFASTQ} type="file" accept=".fastq,.fastq.gz,.fq,.fq.gz" id="alignment-second-file" onChange={this.uploadAlignmentSecondFile} />
+						{/* NOTE: we assume here that if they upload more than one file, they are intending to upload multiple FASTQ files */}
+						{typeof this.state.alignmentFiles === 'object' && this.state.alignmentFiles.length > 1 &&
+							<div id="alignment-files-list" className={`d-flex flex-column mb-4`}>
+								<p>Uploaded Input Reads Files (Must all be FASTQ):</p>
+								<ul className="list-group">
+									{this.state.alignmentFiles.map((file, i) => {
+										return (
+											<li key={i} className={`list-group-item d-flex justify-content-between ${!ARE_FASTQ([file]) && 'text-danger'}`}>
+												<div>
+													{file.name}
+												</div>
+												{!ARE_FASTQ([file]) &&
+													<i class="bi bi-exclamation-circle"></i>
+												}
+											</li>
+										)
+									})}
+								</ul>
+							</div>
+						}
+
+						<div className='form-check mb-4' style={{ opacity: (typeof this.state.alignmentFiles === 'object' && (this.state.alignmentFiles.length > 1 || this.state.alignmentFilesAreFASTQ)) ? 1 : 0.5 }}>
+							<label className="form-check-label" htmlFor="trim-input-fastq">
+								Trim Input FASTQ Sequences
+							</label>
+							<input className="form-check-input" type="checkbox" name="trim-input-fastq" id="trim-input-fastq" checked={this.state.trimInput} onChange={this.setTrimInput} disabled={!(typeof this.state.alignmentFiles === 'object' && (this.state.alignmentFiles.length > 1 || this.state.alignmentFilesAreFASTQ))} />
 						</div>
 
-						<button type="button" className={`btn btn-${(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
-							Load Example Data Files {(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
+						{this.state.trimInput &&
+							<div className="accordion accordion-flush mb-3" id="trim-args">
+								<div className="accordion-item">
+									<h2 className="accordion-header">
+										<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trim-args-collapse" aria-expanded="false" aria-controls="trim-args-collapse">
+											Fastp Trim Arguments
+										</button>
+									</h2>
+									<div id="trim-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#trim-args">
+									</div>
+								</div>
+							</div>
+						}
+
+						<button type="button" className={`btn btn-${(this.state.alignmentFiles === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
+							Load Example Data Files {(this.state.alignmentFiles === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
 						</button>
 
 						<div className="accordion accordion-flush my-5" id="optional-args">
 							<div className="accordion-item">
 								<h2 className="accordion-header">
 									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opt-args-collapse" aria-expanded="false" aria-controls="opt-args-collapse">
-										Optional Arguments
+										Additional Arguments
 									</button>
 								</h2>
 								<div id="opt-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#optional-args">

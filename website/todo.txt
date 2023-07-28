@@ -11,8 +11,6 @@ gzip resources:
 https://stackoverflow.com/questions/4507316/zlib-decompression-client-side
 https://github.com/nodeca/pako
 
-didn't actually need to create fasta index file??
-
 - interesting observations: 
 	- doesn't work after second run if i unlink vs. truncate
 		- sys_open goes to update timestamp (utime) which goes to lookupPath which can't find the output file??

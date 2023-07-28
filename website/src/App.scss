@@ -2,7 +2,8 @@
 	width: 100%;
 }
 
-#output .form-control:disabled, .form-control[readonly] {
+#output .form-control:disabled,
+.form-control[readonly] {
 	background-color: inherit;
 	opacity: 1;
 }

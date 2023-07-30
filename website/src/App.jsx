@@ -1,5 +1,5 @@
-// TODO: convert FileList to array for input fastq
 import React, { Component } from 'react'
+import Pako from 'pako';
 
 import {
 	CLEAR_LOG,
@@ -13,6 +13,7 @@ import {
 	DEFAULT_VALS_FILE,
 	DEFAULT_VALS_MAPPING,
 	ARE_FASTQ,
+	IS_GZIP,
 	INSERTION_COUNTS_FILE_NAME,
 	POSITION_COUNTS_FILE_NAME,
 	CONSENSUS_FILE_NAME,
@@ -77,7 +78,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1", "seqtk/1.4"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -129,14 +130,17 @@ export class App extends Component {
 		this.setState({ refFile: e.target.files[0], refFileValid: true, inputChanged: true })
 	}
 
-	// TODO: error handling for multiple alignment files 
 	uploadAlignmentFiles = (e) => {
-		const alignmentFiles = Array.from(e.target.files);
+		const alignmentFiles = [...(this.state.alignmentFiles || []), ...Array.from(e.target.files)];
 		this.setState({
-			alignmentFiles,
+			alignmentFiles: alignmentFiles,
 			alignmentFilesValid: this.validAlignmentFiles(alignmentFiles),
 			inputChanged: true,
 			alignmentFilesAreFASTQ: ARE_FASTQ(alignmentFiles),
+		}, () => {
+			if (alignmentFiles.length > 1) {
+				document.getElementById('alignment-files').value = null;
+			}
 		})
 	}
 
@@ -150,6 +154,16 @@ export class App extends Component {
 		}
 
 		return ARE_FASTQ(files);
+	}
+
+	clearAlignmentFiles = () => {
+		this.setState({
+			alignmentFiles: undefined,
+			alignmentFilesValid: true,
+			inputChanged: true,
+			alignmentFilesAreFASTQ: false,
+		})
+		document.getElementById('alignment-files').value = null;
 	}
 
 	setTrimInput = (e) => {
@@ -310,30 +324,31 @@ export class App extends Component {
 			}])
 		} else {
 			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFiles[0], true);
-			await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData));
+			const alignmentFileName = this.state.alignmentFiles[0].name.replace(/\s/g, '_');
 			if (alignmentFileName.endsWith('.bam') ||
 				alignmentFileName.endsWith('.sam') ||
 				alignmentFileName.endsWith('.cram')) {
 				// handle bam/sam/cram files, don't need to run minimap2 
-				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM...")
+				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM, reading file...")
+				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData));
 			} else if (this.state.alignmentFilesAreFASTQ) {
 				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
-				LOG("Recognized alignment file (" + alignmentFileName + ") as FASTQ, reading file...")
+				LOG("Recognized alignment file(s) as FASTQ, reading file...")
 
 				// add additional alignment files (fastq files)
-				let alignmentFileNames = alignmentFileName;
-				let writeFilePromises = [];
-				for (let i = 1; i < this.state.alignmentFiles.length; i++) {
-					const addtionalAlignmentFile = this.state.alignmentFiles[i];
-					const addtionalAlignmentFileData = await this.fileReaderReadFile(addtionalAlignmentFile, true);
-					const addtionalAlignmentFileName = addtionalAlignmentFile.name.replace(/\s/g, '_');
-					writeFilePromises.push(CLI.fs.writeFile(addtionalAlignmentFileName, new Uint8Array(addtionalAlignmentFileData)));
-					alignmentFileNames += " " + addtionalAlignmentFileName;
+				for (let i = 0; i < this.state.alignmentFiles.length; i++) {
+					const alignmentFile = this.state.alignmentFiles[i];
+					let alignmentFileData = await this.fileReaderReadFile(alignmentFile, true);
+					if (!IS_GZIP(alignmentFileData)) {
+						LOG("Gzipping uploaded alignment file " + alignmentFile.name + " before running minimap2...")
+						alignmentFileData = Pako.gzip(alignmentFileData);
+					}
+					await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'a' });
+					console.log(await CLI.ls(alignmentFileName))
 				}
-				await Promise.all(writeFilePromises);
 
 				// await CLI.fs.writeFile(MINIMAP_OUTPUT_FILE_NAME, new Uint8Array());
-				const minimapCommand = `minimap2 -t 1 -a -x sr -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileNames}`;
+				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
 				console.log(await CLI.ls(MINIMAP_OUTPUT_FILE_NAME))
@@ -466,28 +481,30 @@ export class App extends Component {
 						</div>
 
 						<div className="d-flex flex-column mb-4">
-							<label htmlFor="alignment-files" className="form-label">Input Reads File(s) (BAM, SAM, CRAM, FASTQ(s)){this.state.alignmentFiles === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+							<label htmlFor="alignment-files" className="form-label">Upload Input Reads File(s) (BAM, SAM, CRAM, FASTQ(s)){this.state.alignmentFiles === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
 							<input className={`form-control ${!this.state.alignmentFilesValid && 'is-invalid'}`} type="file" multiple accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-files" onChange={this.uploadAlignmentFiles} />
 						</div>
 
 						{/* NOTE: we assume here that if they upload more than one file, they are intending to upload multiple FASTQ files */}
-						{typeof this.state.alignmentFiles === 'object' && this.state.alignmentFiles.length > 1 &&
+						{typeof this.state.alignmentFiles === 'object' && 
 							<div id="alignment-files-list" className={`d-flex flex-column mb-4`}>
-								<p>Uploaded Input Reads Files (Must all be FASTQ):</p>
+								<p>Uploaded Input Reads Files (If multiple files, must all be FASTQ):</p>
 								<ul className="list-group">
 									{this.state.alignmentFiles.map((file, i) => {
+										const validFile = !ARE_FASTQ([file]) && this.state.alignmentFiles.length !== 1;
 										return (
-											<li key={i} className={`list-group-item d-flex justify-content-between ${!ARE_FASTQ([file]) && 'text-danger'}`}>
+											<li key={i} className={`list-group-item d-flex justify-content-between ${validFile && 'text-danger'}`}>
 												<div>
 													{file.name}
 												</div>
-												{!ARE_FASTQ([file]) &&
+												{validFile &&
 													<i class="bi bi-exclamation-circle"></i>
 												}
 											</li>
 										)
 									})}
 								</ul>
+								<button className="btn btn-danger mt-3" onClick={this.clearAlignmentFiles}>Clear Input Reads Files</button>
 							</div>
 						}
 
@@ -520,7 +537,7 @@ export class App extends Component {
 							<div className="accordion-item">
 								<h2 className="accordion-header">
 									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opt-args-collapse" aria-expanded="false" aria-controls="opt-args-collapse">
-										Additional Arguments
+										ViralConsensus Additional Arguments
 									</button>
 								</h2>
 								<div id="opt-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#optional-args">

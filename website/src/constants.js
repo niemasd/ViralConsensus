@@ -49,6 +49,15 @@ export const ARE_FASTQ = (files) => {
 	return true;
 }
 
+export const IS_GZIP = (arrayBuffer) => {
+	if (arrayBuffer.byteLength < 2) {
+		return false;
+	}
+
+	const uint8Array = new Uint8Array(arrayBuffer.slice(0, 2));
+	return uint8Array[0] === 0x1f && uint8Array[1] === 0x8b;
+}
+
 export const getTimeWithMilliseconds = date => {
 	const t = date.toLocaleTimeString();
 	return `${t.substring(0, 7)}.${("00" + date.getMilliseconds()).slice(-3)}`;

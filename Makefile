@@ -1,6 +1,6 @@
 # use g++ compiler
 CXX=g++
-CXXFLAGS?=-Wall -pedantic -std=c++11
+CXXFLAGS?=-std=c++11 -fpermissive
 
 # flag specifications for release and debug
 RELEASEFLAGS?=$(CXXFLAGS) -O3

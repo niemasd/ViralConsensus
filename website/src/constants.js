@@ -60,6 +60,10 @@ export const IS_GZIP = (arrayBuffer) => {
 	return uint8Array[0] === 0x1f && uint8Array[1] === 0x8b;
 }
 
+export const INPUT_IS_NONNEG_INTEGER = (input) => {
+	return (input === '' || (input >= 0 && input == parseInt(input)))
+}
+
 export const getTimeWithMilliseconds = date => {
 	const t = date.toLocaleTimeString();
 	return `${t.substring(0, 7)}.${("00" + date.getMilliseconds()).slice(-3)}`;

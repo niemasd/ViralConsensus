@@ -16,6 +16,7 @@ import {
 	DEFAULT_VALS_MAPPING,
 	ARE_FASTQ,
 	IS_GZIP,
+	INPUT_IS_NONNEG_INTEGER,
 	INSERTION_COUNTS_FILE_NAME,
 	POSITION_COUNTS_FILE_NAME,
 	CONSENSUS_FILE_NAME,
@@ -89,7 +90,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "samtools/1.17", "fastp/0.20.1"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.17", "fastp/0.20.1"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -186,32 +187,38 @@ export class App extends Component {
 		this.setState({ trimInput: e.target.checked, inputChanged: true })
 	}
 
+	setTrimFront1 = (e) => {
+		let trimFront1Valid = INPUT_IS_NONNEG_INTEGER(e.target.value);
+
+		this.setState({ trimFront1: e.target.value, trimFront1Valid, inputChanged: true })
+	}
+
+	setTrimPolyG = (e) => {
+		this.setState({ trimPolyG: e.target.checked, inputChanged: true })
+	}
+
+	setTrimPolyX = (e) => {
+		this.setState({ trimPolyX: e.target.checked, inputChanged: true })
+	}
+
 	uploadPrimerFile = (e) => {
 		this.setState({ primerFile: e.target.files[0], inputChanged: true })
 	}
 
 	setPrimerOffset = (e) => {
-		let primerOffsetValid = true;
+		let primerOffsetValid = INPUT_IS_NONNEG_INTEGER(e.target.value);
 
 		this.setState({ primerOffset: e.target.value, primerOffsetValid, inputChanged: true })
 	}
 
 	setMinBaseQuality = (e) => {
-		let minBaseQualityValid = true;
-
-		if (e.target.value < 0) {
-			minBaseQualityValid = false;
-		}
+		let minBaseQualityValid = INPUT_IS_NONNEG_INTEGER(e.target.value);
 
 		this.setState({ minBaseQuality: e.target.value, minBaseQualityValid, inputChanged: true })
 	}
 
 	setMinDepth = (e) => {
-		let minDepthValid = true;
-
-		if (e.target.value < 0) {
-			minDepthValid = false;
-		}
+		let minDepthValid = INPUT_IS_NONNEG_INTEGER(e.target.value);
 
 		this.setState({ minDepth: e.target.value, minDepthValid, inputChanged: true })
 	}
@@ -318,7 +325,7 @@ export class App extends Component {
 
 		LOG("Reading reference file...")
 		// Create example reference fasta file
-		// DISCUSS: These mounts are taking a long time when from disk, (few seconds)
+		// TODO: These mounts are taking a long time when from disk, (few seconds)
 		if (this.state.refFile === 'EXAMPLE_DATA') {
 			await CLI.mount({
 				name: DEFAULT_REF_FILE_NAME,
@@ -362,13 +369,7 @@ export class App extends Component {
 						LOG("Alignment file " + alignmentFile.name + " is already gzipped, skipping gzip...")
 					}
 					if (this.state.trimInput) {
-						LOG("Trimming input reads...")
-						await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(Pako.ungzip(alignmentFileData)))
-						// TODO: is there a compression level we should set? 
-						let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
-						LOG("Executing command: " + fastpCommand);
-						await CLI.exec(fastpCommand);
-						alignmentFileData = await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
+						alignmentFileData = await this.trimInput(alignmentFileData)
 					}
 					await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'a' });
 				}
@@ -403,7 +404,12 @@ export class App extends Component {
 		}
 
 		// Set parameters
-		command += ` -q ${this.state.minBaseQuality} -d ${this.state.minDepth} -f ${this.state.minFreq} -a ${this.state.ambigSymbol}`;
+		const minBaseQuality = this.state.minBaseQuality === '' ? this.state.minBaseQualityDefault : this.state.minBaseQuality;
+		const minDepth = this.state.minDepth === '' ? this.state.minDepthDefault : this.state.minDepth;
+		const minFreq = this.state.minFreq === '' ? this.state.minFreqDefault : this.state.minFreq;
+		const ambigSymbol = this.state.ambigSymbol === '' ? this.state.ambigSymbolDefault : this.state.ambigSymbol;
+		command += ` -q ${minBaseQuality} -d ${minDepth} -f ${minFreq} -a ${ambigSymbol}`;
+		this.setState({ minBaseQuality, minDepth, minFreq, ambigSymbol });
 
 		// Set output files
 		if (this.state.genPosCounts) {
@@ -435,6 +441,32 @@ export class App extends Component {
 		const insCountsExists = !!(await CLI.ls(INSERTION_COUNTS_FILE_NAME));
 		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, loading: false })
 		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
+	}
+
+	trimInput = async (alignmentFileData) => {
+		const CLI = this.state.CLI;
+		LOG("Trimming input reads...")
+		await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(Pako.ungzip(alignmentFileData)))
+
+		// TODO: is there a compression level we should set? 
+		let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
+
+		// Set parameters
+		const trimFront1 = this.state.trimFront1 === '' ? this.state.trimFront1Default : this.state.trimFront1
+
+		fastpCommand += ` --trim_front1 ${trimFront1}`;
+
+		if (this.state.trimPolyG) {
+			fastpCommand += ' --trim_poly_g';
+		}
+
+		if (this.state.trimPolyX) {
+			fastpCommand += ' --trim_poly_x';
+		}
+
+		LOG("Executing command: " + fastpCommand);
+		await CLI.exec(fastpCommand);
+		return await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
 	}
 
 	// helper function to read file as text or arraybuffer and promisify
@@ -496,7 +528,7 @@ export class App extends Component {
 			return;
 		}
 
-		// DISCUSS: interesting unlink behavior
+		// TODO: interesting unlink behavior
 		await this.state.CLI.fs.truncate(file, 0);
 		// await this.state.CLI.fs.unlink(file);
 	}
@@ -557,13 +589,16 @@ export class App extends Component {
 										</button>
 									</h2>
 									<div id="trim-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#trim-args">
-										<div className="form-check">
+										<label htmlFor="trim-front-1" className="form-label"># of Bases to Trim (Front)</label>
+										<input id="trim-front-1" className={`form-control ${!this.state.trimFront1Valid && 'is-invalid'}`} type="number" placeholder="# of Bases to Trim (Front)" value={this.state.trimFront1} onChange={this.setTrimFront1} />
+										<div className="form-text mb-4">Number of bases to trim in the front of every read (default: {this.state.trimFront1Default})</div>
+										<div className="form-check mb-4">
 											<label className="form-check-label" htmlFor="trim-poly-g">
-												Force PolyG Tail Trimming <span style={{fontSize: '0.75rem'}}>(automatically enabled for Illumina NextSeq/NovaSeq data)</span>
+												Force PolyG Tail Trimming <span style={{ fontSize: '0.75rem' }}>(automatically enabled for Illumina NextSeq/NovaSeq data)</span>
 											</label>
 											<input className="form-check-input" type="checkbox" name="trim-poly-g" id="trim-poly-g" checked={this.state.trimPolyG} onChange={this.setTrimPolyG} />
 										</div>
-										<div className="form-check">
+										<div className="form-check mb-4">
 											<label className="form-check-label" htmlFor="trim-poly-x">
 												Enable PolyX Trimming in 3' Ends.
 											</label>
@@ -611,7 +646,7 @@ export class App extends Component {
 									<input id="ambig-symbol" className={`form-control ${!this.state.ambigSymbolValid && 'is-invalid'}`} type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
 									<div className="form-text mb-4">Symbol to use for ambiguous bases (default: {this.state.ambigSymbolDefault})</div>
 
-									<div className="form-check">
+									<div className="form-check mb-4">
 										<label className="form-check-label" htmlFor="output-pos-counts">
 											Generate Position Counts
 										</label>

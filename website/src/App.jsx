@@ -6,6 +6,8 @@ import {
 	LOG,
 	EXAMPLE_ALIGNMENT_FILE,
 	DEFAULT_ALIGNMENT_FILE_NAME,
+	TEMP_FASTP_INPUT,
+	TEMP_FASTP_OUTPUT,
 	MINIMAP_OUTPUT_FILE_NAME,
 	SAMTOOLS_OUTPUT_FILE_NAME,
 	EXAMPLE_REF_FILE,
@@ -41,6 +43,14 @@ export class App extends Component {
 
 			trimInput: false,
 
+			// TODO: do we need trim_front_2 if it's just one big file?
+			trimFront1: 0,
+			trimFront1Valid: true,
+			trimFront1Default: 0,
+
+			trimPolyG: false,
+			trimPolyX: false,
+
 			primerFile: undefined,
 			primerFileValid: true,
 
@@ -66,6 +76,7 @@ export class App extends Component {
 
 			genPosCounts: false,
 			genInsCounts: false,
+
 			CLI: undefined,
 			done: false,
 			consensusExists: false,
@@ -78,7 +89,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1", "seqtk/1.4"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "samtools/1.17", "fastp/0.20.1"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -131,7 +142,8 @@ export class App extends Component {
 	}
 
 	uploadAlignmentFiles = (e) => {
-		const alignmentFiles = [...(this.state.alignmentFiles || []), ...Array.from(e.target.files)];
+		const currentAlignmentFiles = this.state.alignmentFiles === 'EXAMPLE_DATA' ? [] : this.state.alignmentFiles;
+		const alignmentFiles = [...(currentAlignmentFiles || []), ...Array.from(e.target.files)];
 		this.setState({
 			alignmentFiles: alignmentFiles,
 			alignmentFilesValid: this.validAlignmentFiles(alignmentFiles),
@@ -145,6 +157,10 @@ export class App extends Component {
 	}
 
 	validAlignmentFiles = (files) => {
+		if (files === undefined) {
+			return false;
+		}
+
 		if (files.length === 0) {
 			return false;
 		}
@@ -230,7 +246,7 @@ export class App extends Component {
 
 	toggleLoadExampleData = () => {
 		this.setState(prevState => {
-			// TODO: might be iffy
+			// TODO: might be iffy, need to test
 			const refFile = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFiles === 'EXAMPLE_DATA') ? document.getElementById('reference-file')?.files[0] : 'EXAMPLE_DATA';
 			const alignmentFiles = (prevState.refFile === 'EXAMPLE_DATA' || prevState.alignmentFiles === 'EXAMPLE_DATA') ? Array.from(document.getElementById('alignment-files')?.files) : 'EXAMPLE_DATA';
 			const alignmentFilesAreFASTQ = (alignmentFiles === 'EXAMPLE_DATA') ? false : ARE_FASTQ(Array.from(document.getElementById('alignment-files').files));
@@ -239,7 +255,7 @@ export class App extends Component {
 				alignmentFiles,
 				alignmentFilesAreFASTQ,
 				refFileValid: true,
-				// TODO: might be iffy
+				// TODO: might be iffy, need to test
 				alignmentFilesValid: true,
 				inputChanged: prevState.refFile !== refFile || prevState.alignmentFiles !== alignmentFiles
 			}
@@ -259,7 +275,7 @@ export class App extends Component {
 			refFileValid = false;
 		}
 
-		if (!this.state.alignmentFiles && this.validAlignmentFiles(this.state.alignmentFiles)) {
+		if (this.state.alignmentFiles !== 'EXAMPLE_DATA' && !this.validAlignmentFiles(this.state.alignmentFiles)) {
 			alignmentFilesValid = false;
 		}
 
@@ -316,7 +332,7 @@ export class App extends Component {
 		}
 
 		// Create example alignments
-		LOG("Reading alignment file...")
+		LOG("Reading input read file(s)...")
 		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
 			await CLI.mount([{
 				name: DEFAULT_ALIGNMENT_FILE_NAME,
@@ -342,22 +358,35 @@ export class App extends Component {
 					if (!IS_GZIP(alignmentFileData)) {
 						LOG("Gzipping uploaded alignment file " + alignmentFile.name + " before running minimap2...")
 						alignmentFileData = Pako.gzip(alignmentFileData);
+					} else {
+						LOG("Alignment file " + alignmentFile.name + " is already gzipped, skipping gzip...")
+					}
+					if (this.state.trimInput) {
+						LOG("Trimming input reads...")
+						await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(Pako.ungzip(alignmentFileData)))
+						// TODO: is there a compression level we should set? 
+						let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
+						LOG("Executing command: " + fastpCommand);
+						await CLI.exec(fastpCommand);
+						alignmentFileData = await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
 					}
 					await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'a' });
-					console.log(await CLI.ls(alignmentFileName))
 				}
+				await this.deleteFile(TEMP_FASTP_INPUT);
+				await this.deleteFile(TEMP_FASTP_OUTPUT);
 
-				// await CLI.fs.writeFile(MINIMAP_OUTPUT_FILE_NAME, new Uint8Array());
 				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
-				console.log(await CLI.ls(MINIMAP_OUTPUT_FILE_NAME))
 
-				// TODO: uncomment when samtools is updated (1.17 is currently available, but lzma is not supported)
-				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				// Create index for reference file, for some reason samtools view is not automatically creating it
+				await CLI.exec(`samtools faidx ${refFileName}`)
+
+				// TODO: determine if lzma is working
+				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				// await CLI.fs.writeFile(SAMTOOLS_OUTPUT_FILE_NAME, new Uint8Array());
-				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				console.log(await CLI.fs.readFile(refFileName + '.fai'))
 				LOG("Executing command: " + samToolsCommand);
 				await CLI.exec(samToolsCommand);
 			} else {
@@ -463,6 +492,10 @@ export class App extends Component {
 	}
 
 	deleteFile = async (file) => {
+		if (!(await this.state.CLI.ls(file))) {
+			return;
+		}
+
 		// DISCUSS: interesting unlink behavior
 		await this.state.CLI.fs.truncate(file, 0);
 		// await this.state.CLI.fs.unlink(file);
@@ -486,7 +519,7 @@ export class App extends Component {
 						</div>
 
 						{/* NOTE: we assume here that if they upload more than one file, they are intending to upload multiple FASTQ files */}
-						{typeof this.state.alignmentFiles === 'object' && 
+						{typeof this.state.alignmentFiles === 'object' && this.state.alignmentFiles.length > 0 &&
 							<div id="alignment-files-list" className={`d-flex flex-column mb-4`}>
 								<p>Uploaded Input Reads Files (If multiple files, must all be FASTQ):</p>
 								<ul className="list-group">
@@ -498,7 +531,7 @@ export class App extends Component {
 													{file.name}
 												</div>
 												{validFile &&
-													<i class="bi bi-exclamation-circle"></i>
+													<i className="bi bi-exclamation-circle"></i>
 												}
 											</li>
 										)
@@ -524,6 +557,18 @@ export class App extends Component {
 										</button>
 									</h2>
 									<div id="trim-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#trim-args">
+										<div className="form-check">
+											<label className="form-check-label" htmlFor="trim-poly-g">
+												Force PolyG Tail Trimming <span style={{fontSize: '0.75rem'}}>(automatically enabled for Illumina NextSeq/NovaSeq data)</span>
+											</label>
+											<input className="form-check-input" type="checkbox" name="trim-poly-g" id="trim-poly-g" checked={this.state.trimPolyG} onChange={this.setTrimPolyG} />
+										</div>
+										<div className="form-check">
+											<label className="form-check-label" htmlFor="trim-poly-x">
+												Enable PolyX Trimming in 3' Ends.
+											</label>
+											<input className="form-check-input" type="checkbox" name="trim-poly-x" id="trim-poly-x" checked={this.state.trimPolyX} onChange={this.setTrimPolyX} />
+										</div>
 									</div>
 								</div>
 							</div>

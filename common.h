@@ -13,7 +13,7 @@
 #include <vector>
 
 // global definitions/constants
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 
 // definitions/constants for argparsing
 #define DEFAULT_NUM_THREADS 1

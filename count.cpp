@@ -58,7 +58,7 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<uint32_t, uint32_t>> const & min_max_primer_inds) {
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<uint32_t, uint32_t>> const & min_max_primer_inds, args_t const & user_args) {
     // open reference FASTA file and CRAM/BAM/SAM file
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
@@ -73,6 +73,11 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
         std::cerr << "Unable to open CRAM/BAM/SAM header: " << in_reads_fn << std::endl; exit(1);
     } else if(header->n_targets != 1) {
         std::cerr << "CRAM/BAM/SAM has " << header->n_targets << " references, but it should have exactly 1: " << in_reads_fn << std::endl; exit(1);
+    }
+
+    // if CRAM file, load reference in htslib
+    if(reads->format.format == cram) {
+        cram_load_reference((reads->fp).cram, user_args.in_ref_fn);
     }
 
     // prepare helper variables for computing counts

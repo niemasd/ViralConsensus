@@ -1,5 +1,12 @@
+@font-face {
+	font-family: 'Roboto Mono';
+	src: url('./assets/RobotoMono-VariableFont_wght.ttf');
+}
+
 .App {
 	width: 100%;
+	font-family: 'Roboto Mono';
+	font-size: 0.9rem;
 }
 
 #output .form-control:disabled,
@@ -41,6 +48,7 @@
 	height: 100%;
 	max-height: 100vh;
 	min-height: 30vh;
+	font-size: 0.9rem;
 }
 
 #loading {

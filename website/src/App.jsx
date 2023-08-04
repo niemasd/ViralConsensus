@@ -1,3 +1,4 @@
+// TODO: incorporate cram fixes into master branch
 import React, { Component } from 'react'
 import Pako from 'pako';
 
@@ -90,7 +91,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.2", "minimap2/2.22", "samtools/1.17", "fastp/0.20.1"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -262,7 +263,6 @@ export class App extends Component {
 				alignmentFiles,
 				alignmentFilesAreFASTQ,
 				refFileValid: true,
-				// TODO: might be iffy, need to test
 				alignmentFilesValid: true,
 				inputChanged: prevState.refFile !== refFile || prevState.alignmentFiles !== alignmentFiles
 			}
@@ -286,7 +286,13 @@ export class App extends Component {
 			alignmentFilesValid = false;
 		}
 
-		valid = refFileValid && alignmentFilesValid && this.state.primerOffsetValid && this.state.minBaseQualityValid && this.state.minDepthValid && this.state.minFreqValid && this.state.ambigSymbolValid;
+		valid = refFileValid && alignmentFilesValid &&
+			this.state.primerOffsetValid &&
+			this.state.minBaseQualityValid &&
+			this.state.minDepthValid &&
+			this.state.minFreqValid &&
+			this.state.ambigSymbolValid &&
+			this.state.trimFront1Valid;
 
 		this.setState({ refFileValid, alignmentFilesValid })
 
@@ -295,6 +301,7 @@ export class App extends Component {
 
 	runViralConsensus = async () => {
 		if (!this.validInput()) {
+			alert("Invalid input. Please check your input and try again.")
 			LOG("Invalid input. Please check your input and try again.")
 			return;
 		}
@@ -325,7 +332,6 @@ export class App extends Component {
 
 		LOG("Reading reference file...")
 		// Create example reference fasta file
-		// TODO: These mounts are taking a long time when from disk, (few seconds)
 		if (this.state.refFile === 'EXAMPLE_DATA') {
 			await CLI.mount({
 				name: DEFAULT_REF_FILE_NAME,
@@ -338,7 +344,7 @@ export class App extends Component {
 			})
 		}
 
-		// Create example alignments
+		// Handle input read files, run fastp (trimming), minimap2 (alignment), and samtools (conversion to cram), as necessary
 		LOG("Reading input read file(s)...")
 		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
 			await CLI.mount([{
@@ -351,14 +357,14 @@ export class App extends Component {
 			if (alignmentFileName.endsWith('.bam') ||
 				alignmentFileName.endsWith('.sam') ||
 				alignmentFileName.endsWith('.cram')) {
-				// handle bam/sam/cram files, don't need to run minimap2 
+				// Handle bam/sam/cram files, don't need to run minimap2 
 				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM, reading file...")
-				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData));
+				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+'});
 			} else if (this.state.alignmentFilesAreFASTQ) {
-				// handle fastq files, need to run minimap2 (already handled in the declaration of command)
+				// Handle fastq files, need to run minimap2 (already handled in the declaration of command)
 				LOG("Recognized alignment file(s) as FASTQ, reading file...")
 
-				// add additional alignment files (fastq files)
+				// Add additional alignment files (fastq files)
 				for (let i = 0; i < this.state.alignmentFiles.length; i++) {
 					const alignmentFile = this.state.alignmentFiles[i];
 					let alignmentFileData = await this.fileReaderReadFile(alignmentFile, true);
@@ -384,14 +390,13 @@ export class App extends Component {
 				await CLI.exec(`samtools faidx ${refFileName}`)
 
 				// TODO: determine if lzma is working
-				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
+				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				console.log(await CLI.fs.readFile(refFileName + '.fai'))
 				LOG("Executing command: " + samToolsCommand);
 				await CLI.exec(samToolsCommand);
 			} else {
-				// handle other file types, assuming bam/sam/cram, but giving a warning
+				// Handle other file types, assuming bam/sam/cram, but giving a warning
 				LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
 			}
 		}
@@ -420,9 +425,12 @@ export class App extends Component {
 			command += ' -oi ' + INSERTION_COUNTS_FILE_NAME;
 		}
 
-		// Generate consensus genome
+		// Generate consensus genome (run viral_consensus)
 		LOG("Executing command: " + command)
+		// TODO: run twice = bugged
 		const commandError = await CLI.exec(command);
+
+		// Error handling
 		if (commandError.stderr !== '') {
 			console.log(commandError)
 			LOG("Error: " + commandError.stderr);
@@ -436,6 +444,7 @@ export class App extends Component {
 			return;
 		}
 
+		// Check if output files exist
 		const consensusExists = !!consensusFile;
 		const posCountsExists = !!(await CLI.ls(POSITION_COUNTS_FILE_NAME));
 		const insCountsExists = !!(await CLI.ls(INSERTION_COUNTS_FILE_NAME));
@@ -469,7 +478,7 @@ export class App extends Component {
 		return await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
 	}
 
-	// helper function to read file as text or arraybuffer and promisify
+	// Helper function to read file as text or arraybuffer and promisify
 	fileReaderReadFile = async (file, asArrayBuffer = false) => {
 		return new Promise((resolve, reject) => {
 			const fileReader = new FileReader();
@@ -520,7 +529,7 @@ export class App extends Component {
 				fileDeletePromises.push(this.deleteFile(file));
 			}
 		}
-		await Promise.all(fileDeletePromises);
+		return Promise.all(fileDeletePromises);
 	}
 
 	deleteFile = async (file) => {
@@ -536,10 +545,10 @@ export class App extends Component {
 	render() {
 		return (
 			<div className="App pb-5">
-				<h1 className="mt-4 mb-5 text-center">ViralConsensus {this.state.version}</h1>
+				<h2 className="mt-5 mb-5 w-100 text-center">ViralConsensus {this.state.version}</h2>
 				<div className="mt-3" id="container">
 					<div id="input" className="ms-5 me-4">
-						<h4 className="mb-3">Input</h4>
+						<h5 className="mb-3">Input</h5>
 						<div className="d-flex flex-column mb-4">
 							<label htmlFor="reference-file" className="form-label">Reference File (FASTA){this.state.refFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</strong></span>}<span className="text-danger"> *</span></label>
 							<input className={`form-control ${!this.state.refFileValid && 'is-invalid'}`} type="file" id="reference-file" onChange={this.uploadRefFile} />
@@ -664,7 +673,7 @@ export class App extends Component {
 						<button type="button" className="btn btn-primary" onClick={this.runViralConsensus}>Submit</button>
 					</div>
 					<div id="output" className="form-group ms-4 me-5">
-						<label htmlFor="output-text" className="mb-3"><h4>Console</h4></label>
+						<label htmlFor="output-text" className="mb-3"><h5>Console</h5></label>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
 						<div id="download-buttons">

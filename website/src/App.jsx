@@ -1,4 +1,4 @@
-// TODO: incorporate cram fixes into master branch
+// TODO: incorporate relevant fixes into master branch
 import React, { Component } from 'react'
 import Pako from 'pako';
 
@@ -6,11 +6,11 @@ import {
 	CLEAR_LOG,
 	LOG,
 	EXAMPLE_ALIGNMENT_FILE,
-	DEFAULT_ALIGNMENT_FILE_NAME,
+	DEFAULT_ALIGNMENT_BAM_FILE_NAME,
+	DEFAULT_ALIGNMENT_SAM_FILE_NAME,
 	TEMP_FASTP_INPUT,
 	TEMP_FASTP_OUTPUT,
 	MINIMAP_OUTPUT_FILE_NAME,
-	SAMTOOLS_OUTPUT_FILE_NAME,
 	EXAMPLE_REF_FILE,
 	DEFAULT_REF_FILE_NAME,
 	DEFAULT_PRIMER_FILE_NAME,
@@ -99,7 +99,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "samtools/1.10", "fastp/0.20.1"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "fastp/0.20.1"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -339,12 +339,12 @@ export class App extends Component {
 			return;
 		}
 
-		// Remove spaces from file name
 		const refFileName = DEFAULT_REF_FILE_NAME;
-		const alignmentFileName = DEFAULT_ALIGNMENT_FILE_NAME;
+		const alignmentFileName = (this.state.alignmentFiles[0]?.name?.endsWith('.bam') || this.state.alignmentFiles === 'EXAMPLE_DATA') ?
+			DEFAULT_ALIGNMENT_BAM_FILE_NAME : DEFAULT_ALIGNMENT_SAM_FILE_NAME;
 		const primerFileName = DEFAULT_PRIMER_FILE_NAME;
 
-		let command = `viral_consensus -i ${this.state.alignmentFilesAreFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
+		let command = `viral_consensus -i ${this.state.alignmentFilesAreFASTQ ? MINIMAP_OUTPUT_FILE_NAME : alignmentFileName} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
 
 		// Delete old files
 		LOG("Deleting old files...")
@@ -364,21 +364,19 @@ export class App extends Component {
 			})
 		}
 
-		// Handle input read files, run fastp (trimming), minimap2 (alignment), and samtools (conversion to cram), as necessary
+		// Handle input read files, run fastp (trimming) and minimap2 (alignment), as necessary
 		LOG("Reading input read file(s)...")
 		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
 			await CLI.mount([{
-				name: DEFAULT_ALIGNMENT_FILE_NAME,
+				name: DEFAULT_ALIGNMENT_BAM_FILE_NAME,
 				data: this.state.exampleAlignmentFile
 			}])
 		} else {
 			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFiles[0], true);
-			const alignmentFileName = this.state.alignmentFiles[0].name.replace(/\s/g, '_');
 			if (alignmentFileName.endsWith('.bam') ||
-				alignmentFileName.endsWith('.sam') ||
-				alignmentFileName.endsWith('.cram')) {
-				// Handle bam/sam/cram files, don't need to run minimap2 
-				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM, reading file...")
+				alignmentFileName.endsWith('.sam')) {
+				// Handle bam/sam files, don't need to run minimap2 
+				LOG("Recognized alignment file as BAM/SAM, reading file...")
 				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+' });
 			} else if (this.state.alignmentFilesAreFASTQ) {
 				// Handle fastq files, need to run minimap2 (already handled in the declaration of command)
@@ -405,18 +403,9 @@ export class App extends Component {
 				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
-
-				// Create index for reference file, for some reason samtools view is not automatically creating it
-				await CLI.exec(`samtools faidx ${refFileName}`)
-
-				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
-				LOG("Executing command: " + samToolsCommand);
-				await CLI.exec(samToolsCommand);
 			} else {
-				// Handle other file types, assuming bam/sam/cram, but giving a warning
-				LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam/cram format.")
+				// Handle other file types, assuming bam/sam, but giving a warning
+				LOG("WARNING: Alignment file extension not recognized. Assuming bam/sam format.")
 			}
 		}
 
@@ -578,8 +567,8 @@ export class App extends Component {
 						</div>
 
 						<div className="d-flex flex-column mb-4">
-							<label htmlFor="alignment-files" className="form-label">Upload Input Reads File(s) (BAM, SAM, CRAM, FASTQ(s)){this.state.alignmentFiles === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
-							<input className={`form-control ${!this.state.alignmentFilesValid && 'is-invalid'}`} type="file" multiple accept=".sam,.bam,.cram,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-files" onChange={this.uploadAlignmentFiles} />
+							<label htmlFor="alignment-files" className="form-label">Upload Input Reads File(s) (BAM, SAM, FASTQ(s)){this.state.alignmentFiles === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+							<input className={`form-control ${!this.state.alignmentFilesValid && 'is-invalid'}`} type="file" multiple accept=".sam,.bam,.fastq,.fastq.gz,.fq,.fq.gz" id="alignment-files" onChange={this.uploadAlignmentFiles} />
 						</div>
 
 						{/* NOTE: we assume here that if they upload more than one file, they are intending to upload multiple FASTQ files */}

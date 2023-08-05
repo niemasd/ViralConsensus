@@ -2,13 +2,12 @@ export const OUTPUT_ID = "output-text";
 export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/NC_045512.2.fas";
 export const DEFAULT_REF_FILE_NAME = 'ref.fas';
 export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
-export const DEFAULT_ALIGNMENT_FILE_NAME = 'alignments.bam';
+export const DEFAULT_ALIGNMENT_SAM_FILE_NAME = 'alignments.sam';
+export const DEFAULT_ALIGNMENT_BAM_FILE_NAME = 'alignments.bam';
 export const DEFAULT_PRIMER_FILE_NAME = 'primers.txt';
 export const TEMP_FASTP_INPUT = 'temp.fastq.fq';
 export const TEMP_FASTP_OUTPUT = 'temp-trimmed.fastq.gz';
 export const MINIMAP_OUTPUT_FILE_NAME = 'reads.sam';
-// TODO: change back to CRAM when we can support it
-export const SAMTOOLS_OUTPUT_FILE_NAME = 'mapped_reads.cram';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {
 	"DEFAULT_MIN_QUAL": "minBaseQuality",

@@ -58,13 +58,21 @@
 	align-self: center;
 }
 
-#download-buttons {
+.download-buttons {
 	display: flex;
 	justify-content: space-between;
+	
+	button {
+		font-size: 0.9rem;
+	}
 }
 
 footer {
 	margin-top: 10vh;
+}
+
+.cursor-pointer {
+	cursor: pointer;
 }
 
 @keyframes loading-anim {

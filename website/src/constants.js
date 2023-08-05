@@ -6,8 +6,11 @@ export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd
 export const DEFAULT_ALIGNMENT_SAM_FILE_NAME = BIOWASM_WORKING_DIR + 'alignments.sam';
 export const DEFAULT_ALIGNMENT_BAM_FILE_NAME = BIOWASM_WORKING_DIR + 'alignments.bam';
 export const DEFAULT_PRIMER_FILE_NAME = BIOWASM_WORKING_DIR + 'primers.txt';
+// TODO: change to .fastq.gz when biowasm bug is fixed
 export const TEMP_FASTP_INPUT = BIOWASM_WORKING_DIR + 'temp.fastq.fq';
 export const TEMP_FASTP_OUTPUT = BIOWASM_WORKING_DIR + 'temp-trimmed.fastq.gz';
+export const COMBINED_SEQUENCES_FILE_NAME = BIOWASM_WORKING_DIR + 'sequences.fastq.gz';
+export const FASTP_OUTPUT_FILE_NAME = BIOWASM_WORKING_DIR + 'trimmed-sequences.fastq.gz';
 export const MINIMAP_OUTPUT_FILE_NAME = BIOWASM_WORKING_DIR + 'reads.sam';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {

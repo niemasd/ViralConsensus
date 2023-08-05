@@ -5,12 +5,13 @@ import Pako from 'pako';
 import {
 	CLEAR_LOG,
 	LOG,
-	BIOWASM_WORKING_DIR,
 	EXAMPLE_ALIGNMENT_FILE,
 	DEFAULT_ALIGNMENT_BAM_FILE_NAME,
 	DEFAULT_ALIGNMENT_SAM_FILE_NAME,
 	TEMP_FASTP_INPUT,
 	TEMP_FASTP_OUTPUT,
+	COMBINED_SEQUENCES_FILE_NAME,
+	FASTP_OUTPUT_FILE_NAME,
 	MINIMAP_OUTPUT_FILE_NAME,
 	EXAMPLE_REF_FILE,
 	DEFAULT_REF_FILE_NAME,
@@ -93,6 +94,8 @@ export class App extends Component {
 			consensusExists: false,
 			posCountsExists: false,
 			insCountsExists: false,
+			fastpOutputExists: false,
+			minimapOutputExists: false,
 			loading: false,
 			inputChanged: false
 		}
@@ -190,6 +193,17 @@ export class App extends Component {
 			alignmentFilesAreFASTQ: false,
 		})
 		document.getElementById('alignment-files').value = null;
+	}
+
+	deleteAlignmentFile = (index) => {
+		document.getElementById("alignment-files").value = null;
+
+		const alignmentFiles = [...this.state.alignmentFiles];
+		alignmentFiles.splice(index, 1);
+
+		const alignmentFilesValid = this.validAlignmentFiles(alignmentFiles);
+		const alignmentFilesAreFASTQ = ARE_FASTQ(alignmentFiles);
+		this.setState({ alignmentFiles, alignmentFilesValid, alignmentFilesAreFASTQ, inputChanged: true })
 	}
 
 	setTrimInput = (e) => {
@@ -328,7 +342,7 @@ export class App extends Component {
 
 		const startTime = performance.now();
 		LOG("Starting job...")
-		this.setState({ done: false, loading: true, inputChanged: false, consensusExists: false, posCountsExists: false, insCountsExists: false })
+		this.setState({ done: false, loading: true, inputChanged: false, consensusExists: false, posCountsExists: false, insCountsExists: false, fastpOutputExists: false, minimapOutputExists: false })
 
 		const CLI = this.state.CLI;
 
@@ -366,13 +380,14 @@ export class App extends Component {
 			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFiles[0], true);
 			const uploadedFileName = this.state.alignmentFiles[0].name;
 			if (uploadedFileName.endsWith('.bam') ||
-			uploadedFileName.endsWith('.sam')) {
+				uploadedFileName.endsWith('.sam')) {
 				// Handle bam/sam files, don't need to run minimap2 
 				LOG("Recognized alignment file as BAM/SAM, reading file...")
 				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+' });
 			} else if (this.state.alignmentFilesAreFASTQ) {
 				// Handle fastq files, need to run minimap2 (already handled in the declaration of command)
 				LOG("Recognized alignment file(s) as FASTQ, reading file...")
+				const fastpOutputFile = this.state.trimInput ? FASTP_OUTPUT_FILE_NAME : COMBINED_SEQUENCES_FILE_NAME;
 
 				// Add additional alignment files (fastq files)
 				for (let i = 0; i < this.state.alignmentFiles.length; i++) {
@@ -387,12 +402,12 @@ export class App extends Component {
 					if (this.state.trimInput) {
 						alignmentFileData = await this.trimInput(alignmentFileData)
 					}
-					await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'a' });
+					await CLI.fs.writeFile(fastpOutputFile, new Uint8Array(alignmentFileData), { flags: 'a' });
 				}
 				await this.deleteFile(TEMP_FASTP_INPUT);
 				await this.deleteFile(TEMP_FASTP_OUTPUT);
 
-				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${alignmentFileName}`;
+				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${fastpOutputFile}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
 			} else {
@@ -448,13 +463,16 @@ export class App extends Component {
 		const consensusExists = !!consensusFile;
 		const posCountsExists = !!(await CLI.ls(POSITION_COUNTS_FILE_NAME));
 		const insCountsExists = !!(await CLI.ls(INSERTION_COUNTS_FILE_NAME));
-		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, loading: false })
+		const fastpOutputExists = !!(await CLI.ls(FASTP_OUTPUT_FILE_NAME));
+		const minimapOutputExists = !!(await CLI.ls(MINIMAP_OUTPUT_FILE_NAME));
+		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, fastpOutputExists, minimapOutputExists, loading: false })
 		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
 	}
 
 	trimInput = async (alignmentFileData) => {
 		const CLI = this.state.CLI;
 		LOG("Trimming input reads...")
+		// TODO: use gz when bug is fixed on Biowasm end
 		await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(Pako.ungzip(alignmentFileData)))
 
 		let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
@@ -479,6 +497,7 @@ export class App extends Component {
 
 		LOG("Executing command: " + fastpCommand);
 		await CLI.exec(fastpCommand);
+		// TODO: Is there a better way to append data w/o an additional read + append? 
 		return await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
 	}
 
@@ -497,17 +516,14 @@ export class App extends Component {
 		})
 	}
 
-	downloadConsensus = async () => {
-		await this.downloadFile(CONSENSUS_FILE_NAME);
-		await this.downloadFile(POSITION_COUNTS_FILE_NAME);
-		await this.downloadFile(INSERTION_COUNTS_FILE_NAME);
-	}
-
 	downloadFile = async (fileName) => {
 		const CLI = this.state.CLI;
 		if (!(await CLI.ls(fileName))) {
 			return;
 		}
+
+		// remove absolute path from file name
+		fileName = fileName.split('/').pop();
 
 		const fileBlob = new Blob([await CLI.fs.readFile(fileName, { encoding: 'binary' })], { type: 'application/octet-stream' });
 		var objectUrl = URL.createObjectURL(fileBlob);
@@ -548,7 +564,8 @@ export class App extends Component {
 	render() {
 		return (
 			<div className="App pb-5">
-				<h2 className="mt-5 mb-5 w-100 text-center">ViralConsensus {this.state.version}</h2>
+				<h2 className="mt-5 mb-2 w-100 text-center">ViralConsensus {this.state.version}</h2>
+				<p className="my-3 w-100 text-center">Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br /><br /></p>
 				<div className="mt-3" id="container">
 					<div id="input" className="ms-5 me-4">
 						<h5 className="mb-3">Input</h5>
@@ -574,9 +591,12 @@ export class App extends Component {
 												<div>
 													{file.name}
 												</div>
-												{validFile &&
-													<i className="bi bi-exclamation-circle"></i>
-												}
+												<div>
+													<i className="bi bi-trash text-danger cursor-pointer" onClick={() => this.deleteAlignmentFile(i)}></i>
+													{validFile &&
+														<i className="bi bi-exclamation-circle ms-3"></i>
+													}
+												</div>
 											</li>
 										)
 									})}
@@ -688,17 +708,22 @@ export class App extends Component {
 						<label htmlFor="output-text" className="mb-3"><h5>Console</h5></label>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
-						<div id="download-buttons">
-							{this.state.done && this.state.consensusExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadConsensus}>Download Consensus FASTA</button>}
-							{this.state.done && this.state.posCountsExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadPosCounts}>Download Position Counts</button>}
-							{this.state.done && this.state.insCountsExists && <button type="button" className={`btn btn-success mt-4 mx-2 w-100`} onClick={this.downloadInsCounts}>Download Insertion Counts</button>}
+						{(this.state.done && (this.state.consensusExists || this.state.posCountsExists || this.state.insCountsExists) &&
+							<p className="mt-4 mb-2">ViralConsensus Output Files: </p>)}
+						<div className="download-buttons">
+							{(this.state.done && this.state.consensusExists) && <button type="button" className={`btn btn-success me-2 w-100`} onClick={() => this.downloadFile(CONSENSUS_FILE_NAME)}>Download Consensus FASTA</button>}
+							{(this.state.done && this.state.posCountsExists) && <button type="button" className={`btn btn-success mx-2 w-100`} onClick={() => this.downloadFile(POSITION_COUNTS_FILE_NAME)}>Download Position Counts</button>}
+							{(this.state.done && this.state.insCountsExists) && <button type="button" className={`btn btn-success ms-2 w-100`} onClick={() => this.downloadFile(INSERTION_COUNTS_FILE_NAME)}>Download Insertion Counts</button>}
+						</div>
+						{(this.state.done && (this.state.fastpOutputExists || this.state.minimapOutputExists) &&
+							<p className="mt-3 mb-2">Other Output Files:</p>)}
+						<div className="download-buttons">
+							{(this.state.done && this.state.fastpOutputExists) && <button type="button" className={`btn btn-success me-2 w-100`} onClick={() => this.downloadFile(FASTP_OUTPUT_FILE_NAME)}>Download Trimmed Sequences (FASTP)</button>}
+							{(this.state.done && this.state.minimapOutputExists) && <button type="button" className={`btn btn-success ms-2 w-100`} onClick={() => this.downloadFile(MINIMAP_OUTPUT_FILE_NAME)}>Download Aligned Sequences (Minimap2)</button>}
 						</div>
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>
-				<footer className="text-center">
-					Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
-				</footer>
 			</div>
 		)
 	}

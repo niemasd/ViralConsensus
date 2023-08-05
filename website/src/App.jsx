@@ -13,6 +13,7 @@ import {
 	SAMTOOLS_OUTPUT_FILE_NAME,
 	EXAMPLE_REF_FILE,
 	DEFAULT_REF_FILE_NAME,
+	DEFAULT_PRIMER_FILE_NAME,
 	DEFAULT_VALS_FILE,
 	DEFAULT_VALS_MAPPING,
 	ARE_FASTQ,
@@ -45,10 +46,17 @@ export class App extends Component {
 
 			trimInput: false,
 
-			// TODO: do we need trim_front_2 if it's just one big file?
+			fastpCompressionLevel: 9,
+			fastpCompressionLevelValid: true,
+			fastpCompressionLevelDefault: 9,
+
 			trimFront1: 0,
 			trimFront1Valid: true,
 			trimFront1Default: 0,
+
+			trimTail1: 0,
+			trimTail1Valid: true,
+			trimTail1Default: 0,
 
 			trimPolyG: false,
 			trimPolyX: false,
@@ -188,10 +196,22 @@ export class App extends Component {
 		this.setState({ trimInput: e.target.checked, inputChanged: true })
 	}
 
+	setFastpCompressionLevel = (e) => {
+		let fastpCompressionLevelValid = INPUT_IS_NONNEG_INTEGER(e.target.value, 1, 9)
+
+		this.setState({ fastpCompressionLevel: e.target.value, fastpCompressionLevelValid, inputChanged: true })
+	}
+
 	setTrimFront1 = (e) => {
 		let trimFront1Valid = INPUT_IS_NONNEG_INTEGER(e.target.value);
 
 		this.setState({ trimFront1: e.target.value, trimFront1Valid, inputChanged: true })
+	}
+
+	setTrimTail1 = (e) => {
+		let trimTail1Valid = INPUT_IS_NONNEG_INTEGER(e.target.value);
+
+		this.setState({ trimTail1: e.target.value, trimTail1Valid, inputChanged: true })
 	}
 
 	setTrimPolyG = (e) => {
@@ -320,9 +340,9 @@ export class App extends Component {
 		}
 
 		// Remove spaces from file name
-		const refFileName = this.state?.refFile?.name?.replace(/\s/g, '_') ?? DEFAULT_REF_FILE_NAME;
-		const alignmentFileName = this.state?.alignmentFiles[0]?.name?.replace(/\s/g, '_') ?? DEFAULT_ALIGNMENT_FILE_NAME;
-		const primerFileName = this.state?.primerFile?.name?.replace(/\s/g, '_');
+		const refFileName = DEFAULT_REF_FILE_NAME;
+		const alignmentFileName = DEFAULT_ALIGNMENT_FILE_NAME;
+		const primerFileName = DEFAULT_PRIMER_FILE_NAME;
 
 		let command = `viral_consensus -i ${this.state.alignmentFilesAreFASTQ ? SAMTOOLS_OUTPUT_FILE_NAME : (alignmentFileName ?? DEFAULT_ALIGNMENT_FILE_NAME)} -r ${refFileName} -o ${CONSENSUS_FILE_NAME}`;
 
@@ -359,7 +379,7 @@ export class App extends Component {
 				alignmentFileName.endsWith('.cram')) {
 				// Handle bam/sam/cram files, don't need to run minimap2 
 				LOG("Recognized alignment file (" + alignmentFileName + ") as BAM/SAM/CRAM, reading file...")
-				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+'});
+				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+' });
 			} else if (this.state.alignmentFilesAreFASTQ) {
 				// Handle fastq files, need to run minimap2 (already handled in the declaration of command)
 				LOG("Recognized alignment file(s) as FASTQ, reading file...")
@@ -389,7 +409,6 @@ export class App extends Component {
 				// Create index for reference file, for some reason samtools view is not automatically creating it
 				await CLI.exec(`samtools faidx ${refFileName}`)
 
-				// TODO: determine if lzma is working
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.1 --output-fmt-option use_lzma=1 --output-fmt-option archive=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -T ${refFileName} -@ 1 -F 4 -C --output-fmt-option version=3.0 --output-fmt-option use_lzma=1 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
 				// const samToolsCommand = `samtools view -o ${SAMTOOLS_OUTPUT_FILE_NAME} -@ 1 -F 4 --output-fmt-option level=9 ${MINIMAP_OUTPUT_FILE_NAME}`;
@@ -457,13 +476,17 @@ export class App extends Component {
 		LOG("Trimming input reads...")
 		await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(Pako.ungzip(alignmentFileData)))
 
-		// TODO: is there a compression level we should set? 
 		let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
 
 		// Set parameters
-		const trimFront1 = this.state.trimFront1 === '' ? this.state.trimFront1Default : this.state.trimFront1
+		const compressionLevel = this.state.fastpCompressionLevel === '' ? this.state.fastpCompressionLevelDefault : this.state.fastpCompressionLevel;
+		fastpCommand += ` --compression ${compressionLevel}`;
 
+		const trimFront1 = this.state.trimFront1 === '' ? this.state.trimFront1Default : this.state.trimFront1;
 		fastpCommand += ` --trim_front1 ${trimFront1}`;
+
+		const trimTail1 = this.state.trimTail1 === '' ? this.state.trimTail1Default : this.state.trimTail1;
+		fastpCommand += ` --trim_tail1 ${trimTail1}`;
 
 		if (this.state.trimPolyG) {
 			fastpCommand += ' --trim_poly_g';
@@ -598,9 +621,18 @@ export class App extends Component {
 										</button>
 									</h2>
 									<div id="trim-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#trim-args">
+										<label htmlFor="fastp-compression-level" className="form-label">Compression Level (1-9)</label>
+										<input id="fastp-compression-level" className={`form-control ${!this.state.fastpCompressionLevelValid && 'is-invalid'}`} type="number" placeholder="Compression Level" value={this.state.fastpCompressionLevel} onChange={this.setFastpCompressionLevel} />
+										<div className="form-text mb-4">Compression level for gzip output (1-9). 1 is fastest, 9 is smallest (default: {this.state.fastpCompressionLevelDefault})</div>
+
 										<label htmlFor="trim-front-1" className="form-label"># of Bases to Trim (Front)</label>
 										<input id="trim-front-1" className={`form-control ${!this.state.trimFront1Valid && 'is-invalid'}`} type="number" placeholder="# of Bases to Trim (Front)" value={this.state.trimFront1} onChange={this.setTrimFront1} />
 										<div className="form-text mb-4">Number of bases to trim in the front of every read (default: {this.state.trimFront1Default})</div>
+
+										<label htmlFor="trim-tail-1" className="form-label"># of Bases to Trim (Tail)</label>
+										<input id="trim-tail-1" className={`form-control ${!this.state.trimTail1Valid && 'is-invalid'}`} type="number" placeholder="# of Bases to Trim (Tail)" value={this.state.trimTail1} onChange={this.setTrimTail1} />
+										<div className="form-text mb-4">Number of bases to trim in the tail of every read (default: {this.state.trimTail1Default})</div>
+
 										<div className="form-check mb-4">
 											<label className="form-check-label" htmlFor="trim-poly-g">
 												Force PolyG Tail Trimming <span style={{ fontSize: '0.75rem' }}>(automatically enabled for Illumina NextSeq/NovaSeq data)</span>
@@ -686,7 +718,6 @@ export class App extends Component {
 				</div>
 				<footer className="text-center">
 					Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
-					Special thank you to Robert Aboukhalil for his support.<br />
 				</footer>
 			</div>
 		)

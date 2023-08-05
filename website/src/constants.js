@@ -3,6 +3,7 @@ export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/Viral
 export const DEFAULT_REF_FILE_NAME = 'ref.fas';
 export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
 export const DEFAULT_ALIGNMENT_FILE_NAME = 'alignments.bam';
+export const DEFAULT_PRIMER_FILE_NAME = 'primers.txt';
 export const TEMP_FASTP_INPUT = 'temp.fastq.fq';
 export const TEMP_FASTP_OUTPUT = 'temp-trimmed.fastq.gz';
 export const MINIMAP_OUTPUT_FILE_NAME = 'reads.sam';
@@ -60,8 +61,8 @@ export const IS_GZIP = (arrayBuffer) => {
 	return uint8Array[0] === 0x1f && uint8Array[1] === 0x8b;
 }
 
-export const INPUT_IS_NONNEG_INTEGER = (input) => {
-	return (input === '' || (input >= 0 && input == parseInt(input)))
+export const INPUT_IS_NONNEG_INTEGER = (input, lowBound = 0, upperBound = Number.MAX_SAFE_INTEGER) => {
+	return (input === '' || (input >= lowBound && input <= upperBound && input == parseInt(input)))
 }
 
 export const getTimeWithMilliseconds = date => {

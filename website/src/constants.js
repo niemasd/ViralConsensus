@@ -1,13 +1,14 @@
+export const BIOWASM_WORKING_DIR = "/shared/data/";
 export const OUTPUT_ID = "output-text";
 export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/NC_045512.2.fas";
-export const DEFAULT_REF_FILE_NAME = 'ref.fas';
+export const DEFAULT_REF_FILE_NAME = BIOWASM_WORKING_DIR + 'ref.fas';
 export const EXAMPLE_ALIGNMENT_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/example.trimmed.unsorted.bam";
-export const DEFAULT_ALIGNMENT_SAM_FILE_NAME = 'alignments.sam';
-export const DEFAULT_ALIGNMENT_BAM_FILE_NAME = 'alignments.bam';
-export const DEFAULT_PRIMER_FILE_NAME = 'primers.txt';
-export const TEMP_FASTP_INPUT = 'temp.fastq.fq';
-export const TEMP_FASTP_OUTPUT = 'temp-trimmed.fastq.gz';
-export const MINIMAP_OUTPUT_FILE_NAME = 'reads.sam';
+export const DEFAULT_ALIGNMENT_SAM_FILE_NAME = BIOWASM_WORKING_DIR + 'alignments.sam';
+export const DEFAULT_ALIGNMENT_BAM_FILE_NAME = BIOWASM_WORKING_DIR + 'alignments.bam';
+export const DEFAULT_PRIMER_FILE_NAME = BIOWASM_WORKING_DIR + 'primers.txt';
+export const TEMP_FASTP_INPUT = BIOWASM_WORKING_DIR + 'temp.fastq.fq';
+export const TEMP_FASTP_OUTPUT = BIOWASM_WORKING_DIR + 'temp-trimmed.fastq.gz';
+export const MINIMAP_OUTPUT_FILE_NAME = BIOWASM_WORKING_DIR + 'reads.sam';
 export const DEFAULT_VALS_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/main/common.h";
 export const DEFAULT_VALS_MAPPING = {
 	"DEFAULT_MIN_QUAL": "minBaseQuality",
@@ -16,9 +17,9 @@ export const DEFAULT_VALS_MAPPING = {
 	"DEFAULT_AMBIG": "ambigSymbol",
 	"DEFAULT_PRIMER_OFFSET": "primerOffset",
 }
-export const CONSENSUS_FILE_NAME = 'consensus.fa';
-export const POSITION_COUNTS_FILE_NAME = 'positionCounts.tsv';
-export const INSERTION_COUNTS_FILE_NAME = 'insertionCounts.json';
+export const CONSENSUS_FILE_NAME = BIOWASM_WORKING_DIR + 'consensus.fa';
+export const POSITION_COUNTS_FILE_NAME = BIOWASM_WORKING_DIR + 'positionCounts.tsv';
+export const INSERTION_COUNTS_FILE_NAME = BIOWASM_WORKING_DIR + 'insertionCounts.json';
 
 export const CLEAR_LOG = () => {
 	const textArea = document.getElementById(OUTPUT_ID);

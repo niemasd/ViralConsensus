@@ -5,6 +5,7 @@ import Pako from 'pako';
 import {
 	CLEAR_LOG,
 	LOG,
+	BIOWASM_WORKING_DIR,
 	EXAMPLE_ALIGNMENT_FILE,
 	DEFAULT_ALIGNMENT_BAM_FILE_NAME,
 	DEFAULT_ALIGNMENT_SAM_FILE_NAME,
@@ -123,8 +124,7 @@ export class App extends Component {
 
 	fetchExampleFiles = async () => {
 		const exampleRefFile = await (await fetch(EXAMPLE_REF_FILE)).text();
-		// note: blob is used here because the example file is binary () and mount accepts blob as data value for mount() function
-		const exampleAlignmentFile = await (await fetch(EXAMPLE_ALIGNMENT_FILE)).blob();
+		const exampleAlignmentFile = await (await fetch(EXAMPLE_ALIGNMENT_FILE)).arrayBuffer();
 
 		this.setState({ exampleRefFile, exampleAlignmentFile: exampleAlignmentFile })
 	}
@@ -353,28 +353,20 @@ export class App extends Component {
 		LOG("Reading reference file...")
 		// Create example reference fasta file
 		if (this.state.refFile === 'EXAMPLE_DATA') {
-			await CLI.mount({
-				name: DEFAULT_REF_FILE_NAME,
-				data: this.state.exampleRefFile
-			})
+			await CLI.fs.writeFile(DEFAULT_REF_FILE_NAME, this.state.exampleRefFile);
 		} else {
-			await CLI.mount({
-				name: refFileName,
-				data: await this.fileReaderReadFile(this.state.refFile)
-			})
+			await CLI.fs.writeFile(DEFAULT_REF_FILE_NAME, await this.fileReaderReadFile(this.state.refFile));
 		}
 
 		// Handle input read files, run fastp (trimming) and minimap2 (alignment), as necessary
 		LOG("Reading input read file(s)...")
 		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
-			await CLI.mount([{
-				name: DEFAULT_ALIGNMENT_BAM_FILE_NAME,
-				data: this.state.exampleAlignmentFile
-			}])
+			await CLI.fs.writeFile(DEFAULT_ALIGNMENT_BAM_FILE_NAME, new Uint8Array(this.state.exampleAlignmentFile));
 		} else {
 			const alignmentFileData = await this.fileReaderReadFile(this.state.alignmentFiles[0], true);
-			if (alignmentFileName.endsWith('.bam') ||
-				alignmentFileName.endsWith('.sam')) {
+			const uploadedFileName = this.state.alignmentFiles[0].name;
+			if (uploadedFileName.endsWith('.bam') ||
+			uploadedFileName.endsWith('.sam')) {
 				// Handle bam/sam files, don't need to run minimap2 
 				LOG("Recognized alignment file as BAM/SAM, reading file...")
 				await CLI.fs.writeFile(alignmentFileName, new Uint8Array(alignmentFileData), { flags: 'w+' });
@@ -549,7 +541,6 @@ export class App extends Component {
 			return;
 		}
 
-		// TODO: interesting unlink behavior
 		await this.state.CLI.fs.truncate(file, 0);
 		// await this.state.CLI.fs.unlink(file);
 	}

@@ -8,10 +8,7 @@ import {
 	EXAMPLE_ALIGNMENT_FILE,
 	DEFAULT_ALIGNMENT_BAM_FILE_NAME,
 	DEFAULT_ALIGNMENT_SAM_FILE_NAME,
-	TEMP_FASTP_INPUT,
-	TEMP_FASTP_OUTPUT,
 	COMBINED_SEQUENCES_FILE_NAME,
-	FASTP_OUTPUT_FILE_NAME,
 	MINIMAP_OUTPUT_FILE_NAME,
 	EXAMPLE_REF_FILE,
 	DEFAULT_REF_FILE_NAME,
@@ -46,23 +43,6 @@ export class App extends Component {
 			alignmentFilesValid: true,
 			exampleAlignmentFile: undefined,
 
-			trimInput: false,
-
-			fastpCompressionLevel: 9,
-			fastpCompressionLevelValid: true,
-			fastpCompressionLevelDefault: 9,
-
-			trimFront1: 0,
-			trimFront1Valid: true,
-			trimFront1Default: 0,
-
-			trimTail1: 0,
-			trimTail1Valid: true,
-			trimTail1Default: 0,
-
-			trimPolyG: false,
-			trimPolyX: false,
-
 			primerFile: undefined,
 			primerFileValid: true,
 
@@ -94,7 +74,6 @@ export class App extends Component {
 			consensusExists: false,
 			posCountsExists: false,
 			insCountsExists: false,
-			fastpOutputExists: false,
 			minimapOutputExists: false,
 			loading: false,
 			inputChanged: false
@@ -103,7 +82,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22", "fastp/0.20.1"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3", "minimap2/2.22"], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -206,36 +185,6 @@ export class App extends Component {
 		this.setState({ alignmentFiles, alignmentFilesValid, alignmentFilesAreFASTQ, inputChanged: true })
 	}
 
-	setTrimInput = (e) => {
-		this.setState({ trimInput: e.target.checked, inputChanged: true })
-	}
-
-	setFastpCompressionLevel = (e) => {
-		let fastpCompressionLevelValid = INPUT_IS_NONNEG_INTEGER(e.target.value, 1, 9)
-
-		this.setState({ fastpCompressionLevel: e.target.value, fastpCompressionLevelValid, inputChanged: true })
-	}
-
-	setTrimFront1 = (e) => {
-		let trimFront1Valid = INPUT_IS_NONNEG_INTEGER(e.target.value);
-
-		this.setState({ trimFront1: e.target.value, trimFront1Valid, inputChanged: true })
-	}
-
-	setTrimTail1 = (e) => {
-		let trimTail1Valid = INPUT_IS_NONNEG_INTEGER(e.target.value);
-
-		this.setState({ trimTail1: e.target.value, trimTail1Valid, inputChanged: true })
-	}
-
-	setTrimPolyG = (e) => {
-		this.setState({ trimPolyG: e.target.checked, inputChanged: true })
-	}
-
-	setTrimPolyX = (e) => {
-		this.setState({ trimPolyX: e.target.checked, inputChanged: true })
-	}
-
 	uploadPrimerFile = (e) => {
 		this.setState({ primerFile: e.target.files[0], inputChanged: true })
 	}
@@ -324,8 +273,7 @@ export class App extends Component {
 			this.state.minBaseQualityValid &&
 			this.state.minDepthValid &&
 			this.state.minFreqValid &&
-			this.state.ambigSymbolValid &&
-			this.state.trimFront1Valid;
+			this.state.ambigSymbolValid;
 
 		this.setState({ refFileValid, alignmentFilesValid })
 
@@ -341,7 +289,7 @@ export class App extends Component {
 
 		const startTime = performance.now();
 		LOG("Starting job...")
-		this.setState({ done: false, loading: true, inputChanged: false, consensusExists: false, posCountsExists: false, insCountsExists: false, fastpOutputExists: false, minimapOutputExists: false })
+		this.setState({ done: false, loading: true, inputChanged: false, consensusExists: false, posCountsExists: false, insCountsExists: false, minimapOutputExists: false })
 
 		const CLI = this.state.CLI;
 
@@ -371,7 +319,7 @@ export class App extends Component {
 			await CLI.fs.writeFile(DEFAULT_REF_FILE_NAME, await this.fileReaderReadFile(this.state.refFile));
 		}
 
-		// Handle input read files, run fastp (trimming) and minimap2 (alignment), as necessary
+		// Handle input read files and run minimap2 (alignment), as necessary
 		LOG("Reading input read file(s)...")
 		if (this.state.alignmentFiles === 'EXAMPLE_DATA') {
 			await CLI.fs.writeFile(DEFAULT_ALIGNMENT_BAM_FILE_NAME, new Uint8Array(this.state.exampleAlignmentFile));
@@ -386,8 +334,7 @@ export class App extends Component {
 			} else if (this.state.alignmentFilesAreFASTQ) {
 				// Handle fastq files, need to run minimap2 (already handled in the declaration of command)
 				LOG("Recognized alignment file(s) as FASTQ, reading file...")
-				const fastpOutputFile = this.state.trimInput ? FASTP_OUTPUT_FILE_NAME : COMBINED_SEQUENCES_FILE_NAME;
-
+				
 				// Add additional alignment files (fastq files)
 				for (let i = 0; i < this.state.alignmentFiles.length; i++) {
 					const alignmentFile = this.state.alignmentFiles[i];
@@ -398,16 +345,11 @@ export class App extends Component {
 					} else {
 						LOG("Alignment file " + alignmentFile.name + " is already gzipped, skipping gzip...")
 					}
-					if (this.state.trimInput) {
-						alignmentFileData = await this.trimInput(alignmentFileData)
-					}
-					await CLI.fs.writeFile(fastpOutputFile, new Uint8Array(alignmentFileData), { flags: 'a' });
+					await CLI.fs.writeFile(COMBINED_SEQUENCES_FILE_NAME, new Uint8Array(alignmentFileData), { flags: 'a' });
 				}
-				await this.deleteFile(TEMP_FASTP_INPUT);
-				await this.deleteFile(TEMP_FASTP_OUTPUT);
 
 				await CLI.fs.writeFile(MINIMAP_OUTPUT_FILE_NAME, new Uint8Array());
-				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${fastpOutputFile}`;
+				const minimapCommand = `minimap2 -t 1 -a -o ${MINIMAP_OUTPUT_FILE_NAME} ${refFileName} ${COMBINED_SEQUENCES_FILE_NAME}`;
 				LOG("Executing command: " + minimapCommand);
 				await CLI.exec(minimapCommand);
 			} else {
@@ -462,41 +404,9 @@ export class App extends Component {
 		const consensusExists = !!consensusFile;
 		const posCountsExists = !!(await CLI.ls(POSITION_COUNTS_FILE_NAME));
 		const insCountsExists = !!(await CLI.ls(INSERTION_COUNTS_FILE_NAME));
-		const fastpOutputExists = !!(await CLI.ls(FASTP_OUTPUT_FILE_NAME));
 		const minimapOutputExists = !!(await CLI.ls(MINIMAP_OUTPUT_FILE_NAME));
-		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, fastpOutputExists, minimapOutputExists, loading: false })
+		this.setState({ done: true, consensusExists, posCountsExists, insCountsExists, minimapOutputExists, loading: false })
 		LOG(`Done! Time Elapsed: ${((performance.now() - startTime) / 1000).toFixed(3)} seconds`);
-	}
-
-	trimInput = async (alignmentFileData) => {
-		const CLI = this.state.CLI;
-		LOG("Trimming input reads...")
-		await CLI.fs.writeFile(TEMP_FASTP_INPUT, new Uint8Array(alignmentFileData))
-
-		let fastpCommand = `fastp -i ${TEMP_FASTP_INPUT} -o ${TEMP_FASTP_OUTPUT} --json /dev/null --html /dev/null`;
-
-		// Set parameters
-		const compressionLevel = this.state.fastpCompressionLevel === '' ? this.state.fastpCompressionLevelDefault : this.state.fastpCompressionLevel;
-		fastpCommand += ` --compression ${compressionLevel}`;
-
-		const trimFront1 = this.state.trimFront1 === '' ? this.state.trimFront1Default : this.state.trimFront1;
-		fastpCommand += ` --trim_front1 ${trimFront1}`;
-
-		const trimTail1 = this.state.trimTail1 === '' ? this.state.trimTail1Default : this.state.trimTail1;
-		fastpCommand += ` --trim_tail1 ${trimTail1}`;
-
-		if (this.state.trimPolyG) {
-			fastpCommand += ' --trim_poly_g';
-		}
-
-		if (this.state.trimPolyX) {
-			fastpCommand += ' --trim_poly_x';
-		}
-
-		LOG("Executing command: " + fastpCommand);
-		await CLI.exec(fastpCommand);
-		// TODO: Is there a better way to append data w/o an additional read + append? 
-		return await CLI.fs.readFile(TEMP_FASTP_OUTPUT);
 	}
 
 	// Helper function to read file as text or arraybuffer and promisify
@@ -603,49 +513,6 @@ export class App extends Component {
 							</div>
 						}
 
-						<div className='form-check mb-4' style={{ opacity: (typeof this.state.alignmentFiles === 'object' && (this.state.alignmentFiles.length > 1 || this.state.alignmentFilesAreFASTQ)) ? 1 : 0.5 }}>
-							<label className="form-check-label" htmlFor="trim-input-fastq">
-								Trim Input FASTQ Sequences
-							</label>
-							<input className="form-check-input" type="checkbox" name="trim-input-fastq" id="trim-input-fastq" checked={this.state.trimInput} onChange={this.setTrimInput} disabled={!(typeof this.state.alignmentFiles === 'object' && (this.state.alignmentFiles.length > 1 || this.state.alignmentFilesAreFASTQ))} />
-						</div>
-
-						<div className={`accordion accordion-flush mb-3 ${this.state.trimInput ? '' : 'd-none'}`} id="trim-args">
-							<div className="accordion-item">
-								<h2 className="accordion-header">
-									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trim-args-collapse" aria-expanded="false" aria-controls="trim-args-collapse">
-										Fastp Trim Arguments
-									</button>
-								</h2>
-								<div id="trim-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#trim-args">
-									<label htmlFor="fastp-compression-level" className="form-label">Compression Level (1-9)</label>
-									<input id="fastp-compression-level" className={`form-control ${!this.state.fastpCompressionLevelValid && 'is-invalid'}`} type="number" placeholder="Compression Level" value={this.state.fastpCompressionLevel} onChange={this.setFastpCompressionLevel} />
-									<div className="form-text mb-4">Compression level for gzip output (1-9). 1 is fastest, 9 is smallest (default: {this.state.fastpCompressionLevelDefault})</div>
-
-									<label htmlFor="trim-front-1" className="form-label"># of Bases to Trim (Front)</label>
-									<input id="trim-front-1" className={`form-control ${!this.state.trimFront1Valid && 'is-invalid'}`} type="number" placeholder="# of Bases to Trim (Front)" value={this.state.trimFront1} onChange={this.setTrimFront1} />
-									<div className="form-text mb-4">Number of bases to trim in the front of every read (default: {this.state.trimFront1Default})</div>
-
-									<label htmlFor="trim-tail-1" className="form-label"># of Bases to Trim (Tail)</label>
-									<input id="trim-tail-1" className={`form-control ${!this.state.trimTail1Valid && 'is-invalid'}`} type="number" placeholder="# of Bases to Trim (Tail)" value={this.state.trimTail1} onChange={this.setTrimTail1} />
-									<div className="form-text mb-4">Number of bases to trim in the tail of every read (default: {this.state.trimTail1Default})</div>
-
-									<div className="form-check mb-4">
-										<label className="form-check-label" htmlFor="trim-poly-g">
-											Force PolyG Tail Trimming <span style={{ fontSize: '0.75rem' }}>(automatically enabled for Illumina NextSeq/NovaSeq data)</span>
-										</label>
-										<input className="form-check-input" type="checkbox" name="trim-poly-g" id="trim-poly-g" checked={this.state.trimPolyG} onChange={this.setTrimPolyG} />
-									</div>
-									<div className="form-check mb-4">
-										<label className="form-check-label" htmlFor="trim-poly-x">
-											Enable PolyX Trimming in 3' Ends.
-										</label>
-										<input className="form-check-input" type="checkbox" name="trim-poly-x" id="trim-poly-x" checked={this.state.trimPolyX} onChange={this.setTrimPolyX} />
-									</div>
-								</div>
-							</div>
-						</div>
-
 						<button type="button" className={`btn btn-${(this.state.alignmentFiles === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
 							Load Example Data Files {(this.state.alignmentFiles === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
 						</button>
@@ -711,10 +578,9 @@ export class App extends Component {
 							{(this.state.done && this.state.posCountsExists) && <button type="button" className={`btn btn-success mx-2 w-100`} onClick={() => this.downloadFile(POSITION_COUNTS_FILE_NAME)}>Download Position Counts</button>}
 							{(this.state.done && this.state.insCountsExists) && <button type="button" className={`btn btn-success ms-2 w-100`} onClick={() => this.downloadFile(INSERTION_COUNTS_FILE_NAME)}>Download Insertion Counts</button>}
 						</div>
-						{(this.state.done && (this.state.fastpOutputExists || this.state.minimapOutputExists) &&
+						{(this.state.done && this.state.minimapOutputExists &&
 							<p className="mt-3 mb-2">Other Output Files:</p>)}
 						<div className="download-buttons">
-							{(this.state.done && this.state.fastpOutputExists) && <button type="button" className={`btn btn-success me-2 w-100`} onClick={() => this.downloadFile(FASTP_OUTPUT_FILE_NAME)}>Download Trimmed Sequences (FASTP)</button>}
 							{(this.state.done && this.state.minimapOutputExists) && <button type="button" className={`btn btn-success ms-2 w-100`} onClick={() => this.downloadFile(MINIMAP_OUTPUT_FILE_NAME)}>Download Aligned Sequences (Minimap2)</button>}
 						</div>
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}

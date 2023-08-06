@@ -1,3 +1,16 @@
 do alotta testing
 
-Questions to ask: Mounting text file, 12KB limit
+tasks down the line:
+- chunking fastq files (uncompressed)
+- chunking gzipped fastq files 
+- reimplementing CRAM files (instead of BAM)
+- cleaning up code / documentation
+- optimize memory usage / delete empty files
+
+gzip resources:
+https://stackoverflow.com/questions/4507316/zlib-decompression-client-side
+https://github.com/nodeca/pako
+
+- interesting observations: 
+	- doesn't work after second run if i unlink vs. truncate
+		- sys_open goes to update timestamp (utime) which goes to lookupPath which can't find the output file??

@@ -10,8 +10,3 @@ body {
 #root {
 	width: 100%;
 }
-
-.form-control:disabled, .form-control[readonly] {
-	background-color: inherit;
-	opacity: 1;
-}

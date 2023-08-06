@@ -1,5 +1,18 @@
+@font-face {
+	font-family: 'Roboto Mono';
+	src: url('./assets/RobotoMono-VariableFont_wght.ttf');
+}
+
 .App {
 	width: 100%;
+	font-family: 'Roboto Mono';
+	font-size: 0.9rem;
+}
+
+#output .form-control:disabled,
+.form-control[readonly] {
+	background-color: inherit;
+	opacity: 1;
 }
 
 #container {
@@ -35,6 +48,7 @@
 	height: 100%;
 	max-height: 100vh;
 	min-height: 30vh;
+	font-size: 0.9rem;
 }
 
 #loading {
@@ -42,6 +56,23 @@
 	width: 25px;
 	animation: loading-anim 1.5s linear infinite;
 	align-self: center;
+}
+
+.download-buttons {
+	display: flex;
+	justify-content: space-between;
+	
+	button {
+		font-size: 0.9rem;
+	}
+}
+
+footer {
+	margin-top: 10vh;
+}
+
+.cursor-pointer {
+	cursor: pointer;
 }
 
 @keyframes loading-anim {
@@ -52,8 +83,4 @@
 	100% {
 		transform: rotate(360deg);
 	}
-}
-
-footer {
-	margin-top: 10vh;
 }

@@ -21,7 +21,7 @@ else
 HTSLIB=libhts.so
 endif
 HTSLIB_A=htslib/libhts.a
-LIBS=-llzma -lbz2 -lz -lcurl -pthread
+LIBS=-llzma -lbz2 -lz -lcurl -pthread -lhts
 
 # relevant constants
 CPP_FILES=main.cpp common.cpp argparse.cpp count.cpp fasta.cpp primer.cpp

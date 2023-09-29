@@ -2,24 +2,25 @@
 ViralConsensus is a fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data. ViralConsensus is orders of magnitude faster and more memory-efficient than existing methods. Further, unlike existing methods, ViralConsensus can pipe data directly from a read mapper via standard input and performs viral consensus calling on-the-fly, making it an ideal tool for viral sequencing pipelines.
 
 # Installation
-ViralConsensus is written in C++ and depends on htslib, which you will need to [install first](https://github.com/samtools/htslib#building-htslib). You can simply download the latest release tarball (or clone the repo) and compile with `make`:
+ViralConsensus is written in C++ and depends on htslib. First, you need to install all dependencies (if you haven't already):
 
 ```bash
-# install dependencies (including htslib)
-sudo apt-get install -y automake bzip2 gcc g++ libbz2-dev libcurl4-openssl-dev liblzma-dev make wget zlib1g-dev
+sudo apt-get install -y automake bzip2 gcc g++ git libbz2-dev libcurl4-openssl-dev liblzma-dev make wget zlib1g-dev
 wget -qO- "https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2" | tar -xj
 cd htslib-*
 autoreconf -i
 ./configure
 make
 sudo make install
-cd ..
+```
 
-# install ViralConsensus
+Then, you can simply download the latest release tarball (or clone this repo) and compile with `make`:
+
+```bash
 git clone https://github.com/niemasd/ViralConsensus.git
 cd ViralConsensus
 make
-sudo mv viral_consensus /usr/local/bin/ # optional; install NGG executables globally
+sudo mv viral_consensus /usr/local/bin/ # optional; install executable globally
 ```
 
 You can also find a Docker container of ViralConsensus on DockerHub: [niemasd/viral_consensus](https://hub.docker.com/r/niemasd/viral_consensus)

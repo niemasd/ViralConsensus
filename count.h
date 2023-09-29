@@ -1,6 +1,5 @@
 #ifndef COUNT_H
 #define COUNT_H
-#include "htslib/cram/cram.h"
 #include "common.h"
 #include "argparse.h"
 

@@ -2,7 +2,7 @@
 ViralConsensus is a fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data. ViralConsensus is orders of magnitude faster and more memory-efficient than existing methods. Further, unlike existing methods, ViralConsensus can pipe data directly from a read mapper via standard input and performs viral consensus calling on-the-fly, making it an ideal tool for viral sequencing pipelines.
 
 # Installation
-ViralConsensus is written in C++ and depends on htslib. You can simply download the latest release tarball (or clone the repo) and compile with `make`:
+ViralConsensus is written in C++ and depends on htslib, which you will need to [install first](https://github.com/samtools/htslib#building-htslib). You can simply download the latest release tarball (or clone the repo) and compile with `make`:
 
 ```bash
 # install dependencies

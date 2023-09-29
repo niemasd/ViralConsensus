@@ -67,17 +67,17 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
         std::cerr << "Not a CRAM/BAM/SAM file: " << in_reads_fn << std::endl; exit(1);
     }
 
+    // if CRAM file, load reference in htslib
+    if(reads->format.format == cram) {
+        hts_set_opt(reads, CRAM_OPT_REFERENCE, user_args.in_ref_fn);
+    }
+
     // set up htsFile for parsing
     bam_hdr_t* header = sam_hdr_read(reads);
     if(!header) {
         std::cerr << "Unable to open CRAM/BAM/SAM header: " << in_reads_fn << std::endl; exit(1);
     } else if(header->n_targets != 1) {
         std::cerr << "CRAM/BAM/SAM has " << header->n_targets << " references, but it should have exactly 1: " << in_reads_fn << std::endl; exit(1);
-    }
-
-    // if CRAM file, load reference in htslib
-    if(reads->format.format == cram) {
-        cram_load_reference((reads->fp).cram, user_args.in_ref_fn);
     }
 
     // prepare helper variables for computing counts

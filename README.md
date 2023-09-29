@@ -6,7 +6,7 @@ ViralConsensus is written in C++ and depends on htslib. You can simply download 
 
 ```bash
 # install dependencies
-sudo apt-get install gcc g++ libbz2-dev libcurl4-openssl-dev liblzma-dev make
+sudo apt-get install gcc g++ libbz2-dev libcurl4-openssl-dev liblzma-dev make zlib1g-dev
 
 # install ViralConsensus
 git clone https://github.com/niemasd/ViralConsensus.git

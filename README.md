@@ -5,8 +5,15 @@ ViralConsensus is a fast and memory-efficient tool for calling viral consensus g
 ViralConsensus is written in C++ and depends on htslib, which you will need to [install first](https://github.com/samtools/htslib#building-htslib). You can simply download the latest release tarball (or clone the repo) and compile with `make`:
 
 ```bash
-# install dependencies
-sudo apt-get install gcc g++ libbz2-dev libcurl4-openssl-dev liblzma-dev make zlib1g-dev
+# install dependencies (including htslib)
+sudo apt-get install -y automake bzip2 gcc g++ libbz2-dev libcurl4-openssl-dev liblzma-dev make wget zlib1g-dev
+wget -qO- "https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2" | tar -xj
+cd htslib-*
+autoreconf -i
+./configure
+make
+sudo make install
+cd ..
 
 # install ViralConsensus
 git clone https://github.com/niemasd/ViralConsensus.git

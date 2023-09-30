@@ -6,7 +6,7 @@ CXXFLAGS?=-Wall -pedantic -std=c++11
 RELEASEFLAGS?=$(CXXFLAGS) -O3
 DEBUGFLAGS?=$(CXXFLAGS) -O0 -g #-pg
 INCLUDE=-Ihtslib
-LIBS=-llzma -lbz2 -lz -lcurl -pthread -lhts
+LIBS=-lhts -llzma -lbz2 -lz -lcurl -pthread
 
 # relevant constants
 CPP_FILES=main.cpp common.cpp argparse.cpp count.cpp fasta.cpp primer.cpp

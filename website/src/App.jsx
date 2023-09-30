@@ -17,6 +17,7 @@ import {
 	INSERTION_COUNTS_FILE_NAME,
 	POSITION_COUNTS_FILE_NAME,
 	CONSENSUS_FILE_NAME,
+	VIRAL_CONSENSUS_VERSION,
 } from './constants'
 
 import './App.scss'
@@ -28,7 +29,8 @@ export class App extends Component {
 		super(props)
 
 		this.state = {
-			version: '',
+			expandedContainer: undefined,
+			additionalArgsOpen: false,
 
 			refFile: undefined,
 			exampleRefFile: undefined,
@@ -76,7 +78,7 @@ export class App extends Component {
 
 	async componentDidMount() {
 		this.setState({
-			CLI: await new Aioli(["ViralConsensus/viral_consensus/0.0.3"], {
+			CLI: await new Aioli(["ViralConsensus/viral_consensus/" + VIRAL_CONSENSUS_VERSION], {
 				printInterleaved: false,
 			})
 		}, () => {
@@ -86,7 +88,7 @@ export class App extends Component {
 
 		this.preventNumberInputScrolling();
 		this.fetchExampleFiles();
-		this.loadDefaultsAndVersion();
+		this.loadDefaults();
 	}
 
 	preventNumberInputScrolling = () => {
@@ -105,7 +107,7 @@ export class App extends Component {
 		this.setState({ exampleRefFile, exampleAlignmentFile: exampleAlignmentFile })
 	}
 
-	loadDefaultsAndVersion = async () => {
+	loadDefaults = async () => {
 		const defaultTextFile = await (await fetch(DEFAULT_VALS_FILE)).text();
 		const defaultText = [...defaultTextFile.matchAll(/#define DEFAULT.*$/gm)].map((line) => line[0].split(' '));
 		for (const defaultValue of defaultText) {
@@ -118,9 +120,6 @@ export class App extends Component {
 				this.setState({ [DEFAULT_VALS_MAPPING[defaultValue[1]] + "Default"]: defaultValue[2], [DEFAULT_VALS_MAPPING[defaultValue[1]]]: defaultValue[2] })
 			}
 		}
-
-		const version = 'v' + defaultTextFile.matchAll(/#define VERSION.*$/gm).next().value[0].split(' ')[2].replace(/"|'/g, '');
-		this.setState({ version })
 	}
 
 	uploadRefFile = (e) => {
@@ -395,80 +394,97 @@ export class App extends Component {
 		await this.state.CLI.fs.unlink(file);
 	}
 
+	toggleExpandContainer = (container) => {
+		this.setState(prevState => {
+			return { expandedContainer: prevState.expandedContainer === container ? undefined : container }
+		});
+	}
+
+	toggleAdditionalArgs = (open = undefined) => {
+		this.setState(prevState => {
+			return { additionalArgsOpen: open === undefined ? !prevState.additionalArgsOpen : open }
+		})
+	}
+
 	render() {
 		return (
 			<div className="App pb-5">
-				<h2 className="mt-5 mb-2 w-100 text-center">ViralConsensus {this.state.version}</h2>
+				<h2 className="mt-5 mb-2 w-100 text-center">ViralConsensus v{VIRAL_CONSENSUS_VERSION}</h2>
 				<p className="my-3 w-100 text-center">Web-based implementation of <a href="https://www.github.com/niemasd/ViralConsensus" target="_blank" rel="noreferrer">ViralConsensus</a> using WebAssembly and <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br /><br /></p>
 				<div className="mt-3" id="container">
-					<div id="input" className="ms-5 me-4">
-						<h5 className="mb-3">Input</h5>
-						<div className="d-flex flex-column mb-4">
-							<label htmlFor="reference-file" className="form-label">Reference File (FASTA){this.state.refFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</strong></span>}<span className="text-danger"> *</span></label>
-							<input className={`form-control ${!this.state.refFileValid && 'is-invalid'}`} type="file" id="reference-file" onChange={this.uploadRefFile} />
+					<div id="input" className={`ms-5 me-4 ${this.state.expandedContainer === 'input' && 'full-width-container'} ${this.state.expandedContainer === 'output' && 'd-none'}`}>
+						<div id="input-header" className="mb-3">
+							<h5 className="my-0">Input</h5>
+							<h4 className="my-0">
+								<i className={`bi bi-${this.state.expandedContainer === 'input' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('input')}></i>
+							</h4>
 						</div>
+						<div id="input-content">
+							<div className="d-flex flex-column mb-4">
+								<label htmlFor="reference-file" className="form-label">Reference File (FASTA){this.state.refFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_REF_FILE} target="_blank" rel="noreferrer">reference file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+								<input className={`form-control ${!this.state.refFileValid && 'is-invalid'}`} type="file" id="reference-file" onChange={this.uploadRefFile} />
+							</div>
 
-						<div className="d-flex flex-column mb-4">
-							<label htmlFor="alignment-file" className="form-label">Upload Input Reads File (BAM, SAM){this.state.alignmentFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
-							<input className={`form-control ${!this.state.alignmentFileValid && 'is-invalid'}`} type="file" accept=".sam,.bam" id="alignment-file" onChange={this.uploadAlignmentFile} />
-						</div>
+							<div className="d-flex flex-column mb-4">
+								<label htmlFor="alignment-file" className="form-label">Upload Input Reads File (BAM, SAM){this.state.alignmentFile === 'EXAMPLE_DATA' && <span><strong>: Using example <a href={EXAMPLE_ALIGNMENT_FILE} target="_blank" rel="noreferrer">BAM file</a>.</strong></span>}<span className="text-danger"> *</span></label>
+								<input className={`form-control ${!this.state.alignmentFileValid && 'is-invalid'}`} type="file" accept=".sam,.bam" id="alignment-file" onChange={this.uploadAlignmentFile} />
+							</div>
 
-						<button type="button" className={`btn btn-${(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
-							Load Example Data Files {(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
-						</button>
+							<h6 className="mt-4" id="additional-arguments" onClick={() => this.toggleAdditionalArgs()}>ViralConsensus Additional Arguments <i className={`bi bi-chevron-${this.state.additionalArgsOpen ? 'up' : 'down'}`}></i></h6>
+							<hr></hr>
 
-						<div className="accordion accordion-flush my-5" id="optional-args">
-							<div className="accordion-item">
-								<h2 className="accordion-header">
-									<button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opt-args-collapse" aria-expanded="false" aria-controls="opt-args-collapse">
-										ViralConsensus Additional Arguments
-									</button>
-								</h2>
-								<div id="opt-args-collapse" className="accordion-collapse collapse pt-4" data-bs-parent="#optional-args">
-									<div className="d-flex flex-column mb-4">
-										<label htmlFor="primer-file" className="form-label">Primer (BED) File</label>
-										<input className="form-control" type="file" id="primer-file" onChange={this.uploadPrimerFile} />
-									</div>
+							<div className={`${this.state.additionalArgsOpen ? '' : 'd-none'}`}>
+								<div className="d-flex flex-column mb-4">
+									<label htmlFor="primer-file" className="form-label">Primer (BED) File</label>
+									<input className="form-control" type="file" id="primer-file" onChange={this.uploadPrimerFile} />
+								</div>
 
-									<label htmlFor="min-base-quality" className="form-label">Primer Offset</label>
-									<input id="primer-offset" className={`form-control ${!this.state.primerOffsetValid && 'is-invalid'}`} type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
-									<div className="form-text mb-4">Number of bases after primer to also trim (default: {this.state.primerOffsetDefault})</div>
+								<label htmlFor="min-base-quality" className="form-label">Primer Offset</label>
+								<input id="primer-offset" className={`form-control ${!this.state.primerOffsetValid && 'is-invalid'}`} type="number" placeholder="Primer Offset" value={this.state.primerOffset} onChange={this.setPrimerOffset} />
+								<div className="form-text mb-4">Number of bases after primer to also trim (default: {this.state.primerOffsetDefault})</div>
 
-									<label htmlFor="min-base-quality" className="form-label">Minimum Base Quality</label>
-									<input id="min-base-quality" className={`form-control ${!this.state.minBaseQualityValid && 'is-invalid'}`} type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
-									<div className="form-text mb-4">Min. base quality to count base in counts (default: {this.state.minBaseQualityDefault})</div>
+								<label htmlFor="min-base-quality" className="form-label">Minimum Base Quality</label>
+								<input id="min-base-quality" className={`form-control ${!this.state.minBaseQualityValid && 'is-invalid'}`} type="number" placeholder="Minimum Base Quality" value={this.state.minBaseQuality} onChange={this.setMinBaseQuality} />
+								<div className="form-text mb-4">Min. base quality to count base in counts (default: {this.state.minBaseQualityDefault})</div>
 
-									<label htmlFor="min-depth" className="form-label">Minimum Depth</label>
-									<input id="min-depth" className={`form-control ${!this.state.minDepthValid && 'is-invalid'}`} type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
-									<div className="form-text mb-4">Min. depth to call base in consensus (default: {this.state.minDepthDefault})</div>
+								<label htmlFor="min-depth" className="form-label">Minimum Depth</label>
+								<input id="min-depth" className={`form-control ${!this.state.minDepthValid && 'is-invalid'}`} type="number" placeholder="Minimum Depth" value={this.state.minDepth} onChange={this.setMinDepth} />
+								<div className="form-text mb-4">Min. depth to call base in consensus (default: {this.state.minDepthDefault})</div>
 
-									<label htmlFor="min-freq" className="form-label">Minimum Frequency</label>
-									<input id="min-freq" className={`form-control ${!this.state.minFreqValid && 'is-invalid'}`} type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
-									<div className="form-text mb-4">Min. frequency to call base/insertion in consensus (default: {this.state.minFreqDefault})</div>
+								<label htmlFor="min-freq" className="form-label">Minimum Frequency</label>
+								<input id="min-freq" className={`form-control ${!this.state.minFreqValid && 'is-invalid'}`} type="number" placeholder="Minimum Frequency" value={this.state.minFreq} onChange={this.setMinFreq} />
+								<div className="form-text mb-4">Min. frequency to call base/insertion in consensus (default: {this.state.minFreqDefault})</div>
 
-									<label htmlFor="ambig-symbol" className="form-label">Ambiguous Symbol</label>
-									<input id="ambig-symbol" className={`form-control ${!this.state.ambigSymbolValid && 'is-invalid'}`} type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
-									<div className="form-text mb-4">Symbol to use for ambiguous bases (default: {this.state.ambigSymbolDefault})</div>
+								<label htmlFor="ambig-symbol" className="form-label">Ambiguous Symbol</label>
+								<input id="ambig-symbol" className={`form-control ${!this.state.ambigSymbolValid && 'is-invalid'}`} type="text" placeholder="Ambiguous Symbol" value={this.state.ambigSymbol} onChange={this.setAmbigSymbol} />
+								<div className="form-text mb-4">Symbol to use for ambiguous bases (default: {this.state.ambigSymbolDefault})</div>
 
-									<div className="form-check mb-4">
-										<label className="form-check-label" htmlFor="output-pos-counts">
-											Generate Position Counts
-										</label>
-										<input className="form-check-input" type="checkbox" name="output-pos-counts" id="output-pos-counts" checked={this.state.genPosCounts} onChange={this.setGenPosCounts} />
-									</div>
-									<div className="form-check">
-										<label className="form-check-label" htmlFor="output-ins-counts">
-											Generate Insertion Counts
-										</label>
-										<input className="form-check-input" type="checkbox" name="output-ins-counts" id="output-ins-counts" checked={this.state.genInsCounts} onChange={this.setGenInsCounts} />
-									</div>
+								<div className="form-check mb-4">
+									<label className="form-check-label" htmlFor="output-pos-counts">
+										Generate Position Counts
+									</label>
+									<input className="form-check-input" type="checkbox" name="output-pos-counts" id="output-pos-counts" checked={this.state.genPosCounts} onChange={this.setGenPosCounts} />
+								</div>
+								<div className="form-check">
+									<label className="form-check-label" htmlFor="output-ins-counts">
+										Generate Insertion Counts
+									</label>
+									<input className="form-check-input" type="checkbox" name="output-ins-counts" id="output-ins-counts" checked={this.state.genInsCounts} onChange={this.setGenInsCounts} />
 								</div>
 							</div>
 						</div>
-						<button type="button" className="btn btn-primary" onClick={this.runViralConsensus}>Submit</button>
+						<button type="button" className={`btn btn-${(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') ? 'success' : 'warning'} mt-3`} onClick={this.toggleLoadExampleData}>
+							Load Example Data Files {(this.state.alignmentFile === 'EXAMPLE_DATA' || this.state.refFile === 'EXAMPLE_DATA') && <strong>(Currently Using Example Files!)</strong>}
+						</button>
+						<button type="button" className="btn btn-primary mt-3" onClick={this.runViralConsensus}>Submit</button>
 					</div>
-					<div id="output" className="form-group ms-4 me-5">
-						<label htmlFor="output-text" className="mb-3"><h5>Console</h5></label>
+					<div id="output" className={`form-group ms-4 me-5 ${this.state.expandedContainer === 'output' && 'full-width-container'} ${this.state.expandedContainer === 'input' && 'd-none'}`}>
+						<div id="output-header" className="mb-3">
+							<label htmlFor="output-text"><h5 className="my-0">Console</h5></label>
+							<h4 className="my-0">
+								<i className={`bi bi-${this.state.expandedContainer === 'output' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('output')}></i>
+							</h4>
+						</div>
 						<textarea className="form-control" id="output-text" rows="3" disabled></textarea>
 						{this.state.loading && <img id="loading" className="mt-3" src={loading} />}
 						{(this.state.done && (this.state.consensusExists || this.state.posCountsExists || this.state.insCountsExists) &&
@@ -481,7 +497,7 @@ export class App extends Component {
 						{this.state.done && this.state.inputChanged && <p className="text-danger text-center mt-4">Warning: Form input has changed since last run, run again to download latest output files.</p>}
 					</div>
 				</div>
-			</div>
+			</div >
 		)
 	}
 }

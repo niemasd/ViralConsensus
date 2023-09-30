@@ -1,3 +1,4 @@
+export const VIRAL_CONSENSUS_VERSION = "0.0.3";
 export const BIOWASM_WORKING_DIR = "/shared/data/";
 export const OUTPUT_ID = "output-text";
 export const EXAMPLE_REF_FILE = "https://raw.githubusercontent.com/niemasd/ViralConsensus/master/example/NC_045512.2.fas";

@@ -25,7 +25,7 @@ make
 sudo mv viral_consensus /usr/local/bin/ # optional; install executable globally
 ```
 
-You can also find a Docker container of ViralConsensus on DockerHub: [niemasd/viral_consensus](https://hub.docker.com/r/niemasd/viral_consensus)
+You can also install ViralConsensus via [conda](https://bioconda.github.io/recipes/viral_consensus/README.html), and you can find a Docker container of ViralConsensus on DockerHub ([niemasd/viral_consensus](https://hub.docker.com/r/niemasd/viral_consensus)).
 
 # Usage
 ```

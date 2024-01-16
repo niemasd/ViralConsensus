@@ -1,6 +1,8 @@
 # ViralConsensus
 ViralConsensus is a fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data. ViralConsensus is orders of magnitude faster and more memory-efficient than existing methods. Further, unlike existing methods, ViralConsensus can pipe data directly from a read mapper via standard input and performs viral consensus calling on-the-fly, making it an ideal tool for viral sequencing pipelines.
 
+To run ViralConsensus, you can either install the command-line tool (instructions below), or you can try out the [web app](https://niema.net/ViralConsensus) created by my student, [Daniel Ji](https://www.linkedin.com/in/danielji26), which is a complete WebAssembly port of ViralConsensus (meaning it runs fully client-side in your own web browser!). The web app works well for reasonably small datasets, but for larger datasets, you will want to use the command-line tool.
+
 # Installation
 ViralConsensus is written in C++ and depends on htslib. First, you need to install all dependencies (if you haven't already):
 
@@ -63,3 +65,7 @@ minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | tee >(viral_consensus -i -
 If you use ViralConsensus in your work, please cite:
 
 > Moshiri N (2023). "ViralConsensus: A fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data." *Bioinformatics*. btad317. [doi:10.1093/bioinformatics/btad317](https://doi.org/10.1093/bioinformatics/btad317)
+
+If you use the ViralConsensus web application (rather than the command-line tool), please *also* cite:
+
+> Ji D, Aboukhalil R, Moshiri N (2023). "ViralWasm: a client-side user-friendly web application suite for viral genomics." *Bioinformatics*. btae018. [doi:10.1093/bioinformatics/btae018](https://doi.org/10.1093/bioinformatics/btae018)

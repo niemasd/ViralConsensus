@@ -61,6 +61,9 @@ Users will likely want to keep the output of the read mapper (e.g. as a compress
 minimap2 -t 1 -a -x sr reference.fas reads.fastq.gz | tee >(viral_consensus -i - -r reference.fas -o consensus.fas) | samtools view -b -@ 1 > reads.bam
 ```
 
+# Output Files
+ViralConsensus produces 3 output files: the consensus sequence (FASTA), base counts at every position (TSV), and insertion counts before every position (JSON). You can visualize the position base counts TSV file in [SamBamViz](http://niema.net/SamBamViz) to look at coverage across the genome as well as to look at base counts at each position.
+
 # Citing ViralConsensus
 If you use ViralConsensus in your work, please cite:
 

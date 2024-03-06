@@ -34,9 +34,9 @@ std::vector<std::pair<uint32_t, uint32_t>> find_overlapping_primers(uint32_t con
     }
     min_max_primer_inds.resize(ref_len, std::make_pair((uint32_t)-1,(uint32_t)-1));
     std::vector<std::pair<uint32_t, uint32_t>> primers = read_bed(primer_bed_fn);
-    unsigned long const NUM_PRIMERS = primers.size();
+    uint64_t const NUM_PRIMERS = primers.size();
     std::list<const std::pair<uint32_t, uint32_t>*> curr_primers;
-    unsigned long primers_ind = 0;
+    uint64_t primers_ind = 0;
     for(uint32_t pos = 0; pos < ref_len; ++pos) {
         while(!curr_primers.empty() && pos >= curr_primers.front()->second + primer_offset) {
             curr_primers.pop_front();

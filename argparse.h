@@ -12,7 +12,7 @@ struct args_t {
     //int16_t num_threads = DEFAULT_NUM_THREADS;   // number of threads
     uint8_t min_qual = DEFAULT_MIN_QUAL;           // minimum base quality to count base in counts
     COUNT_T min_depth = DEFAULT_MIN_DEPTH;         // minimum depth to call base in consensus
-    double min_freq = DEFAULT_MIN_FREQ;            // minimum frequency to call base in consensus
+    long double min_freq = DEFAULT_MIN_FREQ;       // minimum frequency to call base in consensus
     char ambig = DEFAULT_AMBIG;                    // ambiguous symbol
     char* primer_bed_fn = nullptr;                 // primer bed filename
     int16_t primer_offset = DEFAULT_PRIMER_OFFSET; // number of bases after primer to also trim

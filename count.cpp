@@ -2,8 +2,8 @@
 
 void write_pos_counts_tsv(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::ostream & out_file, char delim) {
     out_file << "Pos" << delim << 'A' << delim << 'C' << delim << 'G' << delim << 'T' << delim << '-' << delim << "Total" << std::endl;
-    long unsigned int const pos_counts_size = pos_counts.size(); COUNT_T row_sum;
-    for(long unsigned int pos = 0; pos < pos_counts_size; ++pos) {
+    uint64_t const pos_counts_size = pos_counts.size(); COUNT_T row_sum;
+    for(uint64_t pos = 0; pos < pos_counts_size; ++pos) {
         out_file << pos; row_sum = 0;
         for(auto & val : pos_counts[pos]) {
             out_file << delim << val; row_sum += val;
@@ -225,10 +225,10 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
 
 std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, args_t const & user_args) {
     std::string out; out.reserve(FASTA_STRING_RESERVE);
-    long unsigned int const pos_counts_size = pos_counts.size();
+    uint64_t const pos_counts_size = pos_counts.size();
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
-    char best_pos_base; std::string best_ins_seq = ""; long unsigned int best_count; long unsigned int tot_depth;
-    for(long unsigned int pos = 0; pos <= pos_counts_size; ++pos) {
+    char best_pos_base; std::string best_ins_seq = ""; uint64_t best_count; uint64_t tot_depth;
+    for(uint64_t pos = 0; pos <= pos_counts_size; ++pos) {
         // handle insertions before pos
         ins_counts_it = ins_counts.find(pos);
         if(ins_counts_it != ins_counts.end()) {

@@ -18,6 +18,12 @@ make
 sudo make install
 ```
 
+In order to compile and run ViralConsensus, htslib needs to be installed in your environment's library path. If you followed the instructions above (so htslib was installed in `/usr/local`), you may need to add the following to your `.bashrc` file:
+
+```bash
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
+```
+
 Then, you can simply download the latest release tarball (or clone this repo) and compile with `make`:
 
 ```bash

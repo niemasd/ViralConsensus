@@ -2,7 +2,7 @@
 FROM alpine:3.13.5
 MAINTAINER Niema Moshiri <niemamoshiri@gmail.com>
 
-# install samtools
+# install ViralConsensus
 RUN apk update && \
     apk add autoconf automake bash bzip2-dev curl-dev g++ git make xz-dev zlib-dev && \
     wget -qO- "https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2" | tar -xj && \

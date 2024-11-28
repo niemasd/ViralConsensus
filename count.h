@@ -10,7 +10,7 @@ struct counts_t {
 };
 
 // compute position and insertion counts
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<uint32_t, uint32_t>> const & min_max_primer_inds, args_t const & user_args);
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<std::pair<uint32_t,uint32_t>, std::pair<uint32_t,uint32_t>>> const & min_max_primer_inds, args_t const & user_args);
 
 // compute consensus genome sequence from counts
 std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_counts, std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>> & ins_counts, args_t const & user_args);

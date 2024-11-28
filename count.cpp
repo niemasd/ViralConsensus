@@ -58,7 +58,7 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<uint32_t, uint32_t>> const & min_max_primer_inds, args_t const & user_args) {
+counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<std::pair<uint32_t,uint32_t>, std::pair<uint32_t,uint32_t>>> const & min_max_primer_inds, args_t const & user_args) {
     // open reference FASTA file and CRAM/BAM/SAM file
     htsFile* reads = hts_open(in_reads_fn, "r");
     if(!reads) {
@@ -154,7 +154,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 tmp_uint32 = pos + l;
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
-                    if(curr_base_qual >= min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].first))) {
+                    if(curr_base_qual >= min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].first.second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].second.first))) {
                         // increment the count of the base at this position
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
 

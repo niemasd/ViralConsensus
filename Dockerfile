@@ -5,7 +5,7 @@ MAINTAINER Niema Moshiri <niemamoshiri@gmail.com>
 # install ViralConsensus
 RUN apk update && \
     apk add autoconf automake bash bzip2-dev curl-dev g++ git make xz-dev zlib-dev && \
-    wget -qO- "https://github.com/samtools/htslib/releases/download/1.18/htslib-1.18.tar.bz2" | tar -xj && \
+    wget -qO- "https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.tar.bz2" | tar -xj && \
     cd htslib-* && autoreconf -i && ./configure && make && make install && cd .. && rm -rf htslib-* && \
     git clone https://github.com/niemasd/ViralConsensus.git && \
     cd ViralConsensus* && \

@@ -1,6 +1,8 @@
 # ViralConsensus
 ViralConsensus is a fast and memory-efficient tool for calling viral consensus genome sequences directly from read alignment data. ViralConsensus is orders of magnitude faster and more memory-efficient than existing methods. Further, unlike existing methods, ViralConsensus can pipe data directly from a read mapper via standard input and performs viral consensus calling on-the-fly, making it an ideal tool for viral sequencing pipelines.
 
+Note that, although the tool's name implies that it is primarily meant for viral genomics, ViralConsensus can be used to build consensus genome sequences from arbitrary genomes (e.g. bacterial, mitochondrial, etc.), as long as there is a single reference sequence that is being used for reconstruction. The caveat is that memory consumption scales linearly with reference genome length, meaning ultra-long reference genomes (e.g. human chromosomes) may require prohibitively large amounts of memory (though they may be feasible in large-memory systems).
+
 To run ViralConsensus, you can either install the command-line tool (instructions below), or you can try out the [web app](https://niema.net/ViralConsensus) created by my student, [Daniel Ji](https://www.linkedin.com/in/danielji26), which is a complete WebAssembly port of ViralConsensus (meaning it runs fully client-side in your own web browser!). The web app works well for reasonably small datasets, but for larger datasets, you will want to use the command-line tool.
 
 # Installation

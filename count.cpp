@@ -208,9 +208,9 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 }
             }
 
-            // don't allow BAM_CREF_SKIP for now (I don't know what it is)
+            // handle BAM_CREF_SKIP: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2055-L2064
             else if(op == BAM_CREF_SKIP) {
-                std::cerr << "BAM_CREF_SKIP operation in CIGAR string not currently supported" << std::endl; exit(1);
+                pos += l;
             }
 
             // don't allow BAM_CPAD for now (I don't know what it is)

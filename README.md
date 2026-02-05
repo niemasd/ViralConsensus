@@ -12,7 +12,7 @@ ViralConsensus is written in C++ and depends on htslib. First, you need to insta
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo apt-get install -y automake bzip2 gcc g++ git libbz2-dev libcurl4-openssl-dev liblzma-dev make wget zlib1g-dev
-wget -qO- "https://github.com/samtools/htslib/releases/download/1.18/htslib-1.23.tar.bz2" | tar -xj
+wget -qO- "https://github.com/samtools/htslib/releases/download/1.23/htslib-1.23.tar.bz2" | tar -xj
 cd htslib-*
 autoreconf -i
 ./configure

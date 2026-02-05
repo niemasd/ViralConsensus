@@ -227,7 +227,7 @@ std::string compute_consensus(std::vector<std::array<COUNT_T, 5>> const & pos_co
     std::string out; out.reserve(FASTA_STRING_RESERVE);
     uint64_t const pos_counts_size = pos_counts.size();
     std::unordered_map<uint32_t, std::unordered_map<std::string, COUNT_T>>::iterator ins_counts_it;
-    char best_pos_base; std::string best_ins_seq = ""; uint64_t best_count; uint64_t tot_depth;
+    char best_pos_base = 'N'; std::string best_ins_seq = ""; uint64_t best_count; uint64_t tot_depth;
     for(uint64_t pos = 0; pos <= pos_counts_size; ++pos) {
         // handle insertions before pos
         ins_counts_it = ins_counts.find(pos);

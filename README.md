@@ -38,7 +38,7 @@ sudo mv viral_consensus /usr/local/bin/ # optional; install executable globally
 You can also install ViralConsensus via [conda](https://bioconda.github.io/recipes/viral_consensus/README.html), and you can find a Docker container of ViralConsensus on DockerHub ([niemasd/viral_consensus](https://hub.docker.com/r/niemasd/viral_consensus)).
 
 # Usage
-A help message demonstrating MVC usage can be viewed using the `-h/--help` argument.
+A help message demonstrating ViralConsensus usage can be viewed using the `-h/--help` argument.
 
 ## Piping from Read Mapper
 Because ViralConsensus does not require reads to be sorted, data can be piped directly from the read mapper to ViralConsensus to avoid unnecessary disk I/O (and thus improve speed):

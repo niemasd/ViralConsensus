@@ -45,16 +45,6 @@ args_t parse_args(int const argc, char** const argv) {
                 std::cerr << "Argument -oi/--out_ins_counts expected 1 argument" << std::endl; exit(1);
             }
             user_args.out_ins_counts_fn = argv[i];
-        /* no multithreading support needed (for now)
-        } else if(strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threads") == 0) {
-            if(++i == argc) {
-                std::cerr << "Argument -t/--threads expected 1 argument" << std::endl; exit(1);
-            }
-            user_args.num_threads = atoi(argv[i]);
-            if(user_args.num_threads < 1) {
-                std::cerr << "Invalid number of threads: " << argv[i] << std::endl; exit(1);
-            }
-        */
         } else if(strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--min_qual") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -q/--min_qual expected 1 argument" << std::endl; exit(1);
@@ -78,6 +68,22 @@ args_t parse_args(int const argc, char** const argv) {
             user_args.min_freq = atof(argv[i]);
             if(user_args.min_freq < 0 || user_args.min_freq > 1 || strcmp(argv[i], "") == 0 || argv[i][0] < '0' || argv[i][0] > '9') {
                 std::cerr << "Invalid minimum frequency: " << argv[i] << std::endl; exit(1);
+            }
+        } else if(strcmp(argv[i], "-lb") == 0 || strcmp(argv[i], "--min_aln_len") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -lb/--min_aln_len expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_aln_len = atoi(argv[i]);
+            if(user_args.min_aln_len < 0 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
+                std::cerr << "Invalid minimum read alignment length: " << argv[i] << std::endl; exit(1);
+            }
+        } else if(strcmp(argv[i], "-lp") == 0 || strcmp(argv[i], "--min_aln_per") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -lp/--min_aln_per expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_aln_per = atof(argv[i]);
+            if(user_args.min_aln_per < 0 || user_args.min_aln_per > 1 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
+                std::cerr << "Invalid minimum read alignment percentage: " << argv[i] << std::endl; exit(1);
             }
         } else if(strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--ambig") == 0) {
             if(++i == argc) {
@@ -128,17 +134,18 @@ void print_args(args_t const & user_args) {
               << "out_consensus_fn: " << user_args.out_consensus_fn << std::endl
               << "out_pos_counts_fn: " << user_args.out_pos_counts_fn << std::endl
               << "out_ins_counts_fn: " << user_args.out_ins_counts_fn << std::endl
-              //<< "num_threads: " << user_args.num_threads << std::endl
               << "min_qual: " << user_args.min_qual << std::endl
               << "min_depth: " << user_args.min_depth << std::endl
               << "min_freq: " << user_args.min_freq << std::endl
+              << "min_aln_len: " << user_args.min_aln_len << std::endl
+              << "min_aln_per: " << user_args.min_aln_per << std::endl
               << "ambig: " << user_args.ambig << std::endl
               << "primer_bed_fn: " << user_args.primer_bed_fn << std::endl
               << "primer_offset: " << user_args.primer_offset << std::endl
               ;
 }
 
-void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream & out=std::cout) {
+void print_usage(const char* const exe_name="viral_consensus", std::ostream & out=std::cout) {
     out << "USAGE: " << exe_name << " -i IN_READS -r REF_GENOME -o OUT_CONSENSUS [-op OUT_POS_COUNTS] [-oi OUT_INS_COUNTS] [-q MIN_QUAL] [-d MIN_DEPTH] [-f MIN_FREQ] [-a AMBIG] [-p PRIMER_BED] [-po PRIMER_OFFSET]" << std::endl
         << "  -i/--in_reads IN_READS                Input reads file (CRAM/BAM/SAM), or '-' for standard input" << std::endl
         << "  -r/--ref_genome REF_GENOME            Input reference genome (FASTA)" << std::endl
@@ -148,6 +155,8 @@ void print_usage(const char* const exe_name="viral_consensus_mp", std::ostream &
         << "  -q/--min_qual MIN_QUAL                Minimum base quality to count base in counts (default: " << DEFAULT_MIN_QUAL << ")" << std::endl
         << "  -d/--min_depth MIN_DEPTH              Minimum depth to call base/insertion in consensus (default: " << DEFAULT_MIN_DEPTH << ")" << std::endl
         << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl
+        << "  -lb/--min_aln_len                     Minimum number of aligned bases to count read (default: " << DEFAULT_MIN_ALN_LEN << ")" << std::endl
+        << "  -lp/--min_aln_per                     Minimum percentage of aligned bases to count read (default: " << DEFAULT_MIN_ALN_PER << ")" << std::endl
         << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
         << "  -p/--primer_bed PRIMER_BED            Primer file (BED)" << std::endl
         << "  -po/--primer_offset PRIMER_OFFSET     Number of bases after primer to also trim (default: " << DEFAULT_PRIMER_OFFSET << ")" << std::endl

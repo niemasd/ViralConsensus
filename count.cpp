@@ -58,13 +58,13 @@ void write_ins_counts_json(std::unordered_map<uint32_t, std::unordered_map<std::
     }
 }
 
-counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, uint8_t const min_qual, std::vector<std::pair<std::pair<uint32_t,uint32_t>, std::pair<uint32_t,uint32_t>>> const & min_max_primer_inds, args_t const & user_args) {
+counts_t compute_counts(args_t const & user_args, std::string const & ref, std::vector<std::pair<std::pair<uint32_t,uint32_t>, std::pair<uint32_t,uint32_t>>> const & min_max_primer_inds) {
     // open reference FASTA file and CRAM/BAM/SAM file
-    htsFile* reads = hts_open(in_reads_fn, "r");
+    htsFile* reads = hts_open(user_args.in_reads_fn, "r");
     if(!reads) {
-        std::cerr << "Failed to open file: " << in_reads_fn << std::endl; exit(1);
+        std::cerr << "Failed to open file: " << user_args.in_reads_fn << std::endl; exit(1);
     } else if(reads->format.format != sam && reads->format.format != bam && reads->format.format != cram) {
-        std::cerr << "Not a CRAM/BAM/SAM file: " << in_reads_fn << std::endl; exit(1);
+        std::cerr << "Not a CRAM/BAM/SAM file: " << user_args.in_reads_fn << std::endl; exit(1);
     }
 
     // if CRAM file, load reference in htslib
@@ -75,9 +75,9 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
     // set up htsFile for parsing
     bam_hdr_t* header = sam_hdr_read(reads);
     if(!header) {
-        std::cerr << "Unable to open CRAM/BAM/SAM header: " << in_reads_fn << std::endl; exit(1);
+        std::cerr << "Unable to open CRAM/BAM/SAM header: " << user_args.in_reads_fn << std::endl; exit(1);
     } else if(header->n_targets != 1) {
-        std::cerr << "CRAM/BAM/SAM has " << header->n_targets << " references, but it should have exactly 1: " << in_reads_fn << std::endl; exit(1);
+        std::cerr << "CRAM/BAM/SAM has " << header->n_targets << " references, but it should have exactly 1: " << user_args.in_reads_fn << std::endl; exit(1);
     }
 
     // prepare helper variables for computing counts
@@ -96,6 +96,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
     uint8_t min_ins_qual;                        // minimum base quality in an insertion
     uint32_t tmp_uint32;                         // store current tmp_uint32 value
     std::string curr_ins;                        // current insertion
+    uint32_t curr_aln_length;                    // current read aligned length
     bool primer_trim = !min_max_primer_inds.empty();
 
     // prepare helper iterator objects
@@ -116,7 +117,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
         if(ret == -1) {
             break;
         } else if(ret < -1) {
-            std::cerr << "Error reading file: " << in_reads_fn << std::endl; exit(1);
+            std::cerr << "Error reading file: " << user_args.in_reads_fn << std::endl; exit(1);
         }
         is_reverse = src->core.flag & BAM_FREVERSE;
 
@@ -132,6 +133,23 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
         qseq_encoded = bam_get_seq(src);
         qqual = bam_get_qual(src);
         curr_base_qual = -1;
+
+        // calculate number of aligned bases and skip if too small
+        curr_aln_length = 0;
+        for(k = 0; k < n_cigar; ++k) {
+            switch(cigar_p[k] & BAM_CIGAR_MASK) {
+                case BAM_CMATCH: // M
+                case BAM_CINS:   // I
+                case BAM_CDEL:   // D
+                case BAM_CEQUAL: // =
+                case BAM_CDIFF:  // X
+                    curr_aln_length += (cigar_p[k] >> BAM_CIGAR_SHIFT);
+                    break;
+                default:
+                    break;
+            }
+        }
+        if((curr_aln_length < user_args.min_aln_len) || (curr_aln_length < (user_args.min_aln_per * qlen))) { continue; }
 
         // load read sequence
         qseq.clear();
@@ -154,7 +172,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                 tmp_uint32 = pos + l;
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
-                    if(curr_base_qual >= min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].first.second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].second.first))) {
+                    if(curr_base_qual >= user_args.min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].first.second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].second.first))) {
                         // increment the count of the base at this position
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
 
@@ -187,7 +205,7 @@ counts_t compute_counts(const char* const in_reads_fn, std::string const & ref, 
                     }
                     curr_ins.push_back(qseq[qpos++]);
                 }
-                if(min_ins_qual >= min_qual) {
+                if(min_ins_qual >= user_args.min_qual) {
                     ins_counts_it = counts.ins_counts.find(pos);
                     if(ins_counts_it == counts.ins_counts.end()) {
                         ins_counts_it = counts.ins_counts.emplace(pos, std::unordered_map<std::string, COUNT_T>()).first;

@@ -12,6 +12,8 @@ struct args_t {
     uint8_t min_qual = DEFAULT_MIN_QUAL;           // minimum base quality to count base in counts
     COUNT_T min_depth = DEFAULT_MIN_DEPTH;         // minimum depth to call base in consensus
     long double min_freq = DEFAULT_MIN_FREQ;       // minimum frequency to call base in consensus
+    COUNT_T min_aln_len = DEFAULT_MIN_ALN_LEN;     // minimum number of aligned bases in a read to count it
+    long double min_aln_per = DEFAULT_MIN_ALN_PER; // minimum percentage of aligned bases in a read to count it
     char ambig = DEFAULT_AMBIG;                    // ambiguous symbol
     char* primer_bed_fn = nullptr;                 // primer bed filename
     int16_t primer_offset = DEFAULT_PRIMER_OFFSET; // number of bases after primer to also trim

@@ -13,12 +13,14 @@
 #include <vector>
 
 // global definitions/constants
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 
 // definitions/constants for argparsing
 #define DEFAULT_MIN_QUAL 20
 #define DEFAULT_MIN_DEPTH 10
 #define DEFAULT_MIN_FREQ 0.5
+#define DEFAULT_MIN_ALN_LEN 0
+#define DEFAULT_MIN_ALN_PER 0.0
 #define DEFAULT_AMBIG 'N'
 #define DEFAULT_PRIMER_OFFSET 0
 #define MESSAGE_MISSING_REQUIRED_ARG "Missing required argument: "

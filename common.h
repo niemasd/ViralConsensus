@@ -13,7 +13,7 @@
 #include <vector>
 
 // global definitions/constants
-#define VERSION "1.0.3"
+#define VERSION "1.0.4"
 
 // definitions/constants for argparsing
 #define DEFAULT_MIN_QUAL 20

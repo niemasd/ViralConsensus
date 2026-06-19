@@ -114,6 +114,8 @@ args_t parse_args(int const argc, char** const argv) {
             if(user_args.primer_offset < 0 || strcmp(argv[i], "") == 0 || argv[i][0] < '0' || argv[i][0] > '9') {
                 std::cerr << "Invalid primer offset: " << argv[i] << std::endl; exit(1);
             }
+        } else if(strcmp(argv[i], "-pp") == 0 || strcmp(argv[i], "--proper_pairs") == 0) {
+            user_args.proper_pairs = true;
         } else {
             std::cerr << "Invalid argument: " << argv[i] << std::endl; print_usage(argv[0], std::cerr); exit(1);
         }
@@ -151,6 +153,7 @@ void print_args(args_t const & user_args) {
               << "ambig: " << user_args.ambig << std::endl
               << "primer_bed_fn: " << user_args.primer_bed_fn << std::endl
               << "primer_offset: " << user_args.primer_offset << std::endl
+              << "proper_pairs: " << user_args.proper_pairs << std::endl
               ;
 }
 
@@ -170,6 +173,7 @@ void print_usage(const char* const exe_name="viral_consensus", std::ostream & ou
         << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
         << "  -p/--primer_bed PRIMER_BED            Primer file (BED)" << std::endl
         << "  -po/--primer_offset PRIMER_OFFSET     Number of bases after primer to also trim (default: " << DEFAULT_PRIMER_OFFSET << ")" << std::endl
+        << "  -pp/--proper_pairs                    Only count reads that are in proper pairs" << std::endl
         << "  -v/--version                          Print version number" << std::endl
         << "  -h/--help                             Print this usage message" << std::endl;
 }

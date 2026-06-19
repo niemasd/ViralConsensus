@@ -126,6 +126,9 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
         }
         is_reverse = src->core.flag & BAM_FREVERSE;
 
+        // if this read isn't a proper pair but proper pairs are required, skip
+        if(user_args.proper_pairs && !(src->core.flag & BAM_FPROPER_PAIR)) { continue; }
+
         // if this read fails the required flags or this CIGAR is empty, skip
         n_cigar = src->core.n_cigar;
         if(src->core.flag & FAIL_FLAGS || n_cigar == 0) { continue; }

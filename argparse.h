@@ -18,6 +18,7 @@ struct args_t {
     char ambig = DEFAULT_AMBIG;                    // ambiguous symbol
     char* primer_bed_fn = nullptr;                 // primer bed filename
     int16_t primer_offset = DEFAULT_PRIMER_OFFSET; // number of bases after primer to also trim
+    bool proper_pairs = false;                     // only count reads that are proper pairs
 };
 
 // parse user args

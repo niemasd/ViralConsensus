@@ -85,6 +85,14 @@ args_t parse_args(int const argc, char** const argv) {
             if(user_args.min_aln_per < 0 || user_args.min_aln_per > 1 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
                 std::cerr << "Invalid minimum read alignment percentage: " << argv[i] << std::endl; exit(1);
             }
+        } else if(strcmp(argv[i], "-ip") == 0 || strcmp(argv[i], "--min_id_per") == 0) {
+            if(++i == argc) {
+                std::cerr << "Argument -ip/--min_id_per expected 1 argument" << std::endl; exit(1);
+            }
+            user_args.min_id_per = atof(argv[i]);
+            if(user_args.min_id_per < 0 || user_args.min_id_per > 1 || strcmp(argv[i], "") == 0 || argv[i][0] == '-') {
+                std::cerr << "Invalid minimum read identity percentage: " << argv[i] << std::endl; exit(1);
+            }
         } else if(strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--ambig") == 0) {
             if(++i == argc) {
                 std::cerr << "Argument -a/--ambig expected 1 argument" << std::endl; exit(1);
@@ -139,6 +147,7 @@ void print_args(args_t const & user_args) {
               << "min_freq: " << user_args.min_freq << std::endl
               << "min_aln_len: " << user_args.min_aln_len << std::endl
               << "min_aln_per: " << user_args.min_aln_per << std::endl
+              << "min_id_per: " << user_args.min_id_per << std::endl
               << "ambig: " << user_args.ambig << std::endl
               << "primer_bed_fn: " << user_args.primer_bed_fn << std::endl
               << "primer_offset: " << user_args.primer_offset << std::endl
@@ -157,6 +166,7 @@ void print_usage(const char* const exe_name="viral_consensus", std::ostream & ou
         << "  -f/--min_freq MIN_FREQ                Minimum frequency to call base/insertion in consensus (default: " << DEFAULT_MIN_FREQ << ")" << std::endl
         << "  -lb/--min_aln_len                     Minimum number of aligned bases to count read (default: " << DEFAULT_MIN_ALN_LEN << ")" << std::endl
         << "  -lp/--min_aln_per                     Minimum percentage of aligned bases to count read (default: " << DEFAULT_MIN_ALN_PER << ")" << std::endl
+        << "  -ip/--min_id_per                      Minimum percent identity to count read (default: " << DEFAULT_MIN_ID_PER << ")" << std::endl
         << "  -a/--ambig AMBIG                      Ambiguous symbol (default: " << DEFAULT_AMBIG << ")" << std::endl
         << "  -p/--primer_bed PRIMER_BED            Primer file (BED)" << std::endl
         << "  -po/--primer_offset PRIMER_OFFSET     Number of bases after primer to also trim (default: " << DEFAULT_PRIMER_OFFSET << ")" << std::endl

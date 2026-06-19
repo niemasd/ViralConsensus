@@ -80,6 +80,9 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
         std::cerr << "CRAM/BAM/SAM has " << header->n_targets << " references, but it should have exactly 1: " << user_args.in_reads_fn << std::endl; exit(1);
     }
 
+    // convert "minimum percent identity" to "maximum edit distance percentage"
+    const long double max_edit_dist_per = 1.0 - user_args.min_id_per;
+
     // prepare helper variables for computing counts
     counts_t counts;                             // counts_t object to store the counts themselves
     bam1_t* src = bam_init1();                   // holds the current alignment record, which is read by sam_read1()
@@ -92,6 +95,8 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
     uint8_t* qseq_encoded;                       // current read sequence (4-bit encoded): https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa#file-readbam-c-L30
     std::string qseq;                            // current read sequence
     uint8_t* qqual;                              // current read quality string
+    uint8_t* nm_aux;                             // current read NM auxiliary tag
+    int64_t edit_dist;                           // current read edit distance calculated from NM auxiliary tag
     uint8_t curr_base_qual;                      // current base quality
     uint8_t min_ins_qual;                        // minimum base quality in an insertion
     uint32_t tmp_uint32;                         // store current tmp_uint32 value
@@ -134,7 +139,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
         qqual = bam_get_qual(src);
         curr_base_qual = -1;
 
-        // calculate number of aligned bases and skip if too small
+        // calculate number/percentage of aligned bases and skip if too small
         curr_aln_length = 0;
         for(k = 0; k < n_cigar; ++k) {
             switch(cigar_p[k] & BAM_CIGAR_MASK) {
@@ -150,6 +155,13 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
             }
         }
         if((curr_aln_length < user_args.min_aln_len) || (curr_aln_length < (user_args.min_aln_per * qlen))) { continue; }
+
+        // calculate percent identity and skip if too small
+        nm_aux = bam_aux_get(src, "NM");
+        if(nm_aux != nullptr) {
+            edit_dist = bam_aux2i(nm_aux);
+            if(edit_dist > (max_edit_dist_per * curr_aln_length)) { continue; }
+        }
 
         // load read sequence
         qseq.clear();

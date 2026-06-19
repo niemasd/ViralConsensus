@@ -14,6 +14,7 @@ struct args_t {
     long double min_freq = DEFAULT_MIN_FREQ;       // minimum frequency to call base in consensus
     COUNT_T min_aln_len = DEFAULT_MIN_ALN_LEN;     // minimum number of aligned bases in a read to count it
     long double min_aln_per = DEFAULT_MIN_ALN_PER; // minimum percentage of aligned bases in a read to count it
+    long double min_id_per = DEFAULT_MIN_ID_PER;   // minimum percent identity of a read to count it
     char ambig = DEFAULT_AMBIG;                    // ambiguous symbol
     char* primer_bed_fn = nullptr;                 // primer bed filename
     int16_t primer_offset = DEFAULT_PRIMER_OFFSET; // number of bases after primer to also trim

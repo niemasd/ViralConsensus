@@ -40,6 +40,12 @@ You can also install ViralConsensus via [conda](https://bioconda.github.io/recip
 # Usage
 A help message demonstrating ViralConsensus usage can be viewed using the `-h/--help` argument.
 
+## Example
+
+```bash
+viral_consensus -i example/example.trimmed.unsorted.bam -r example/NC_045512.2.fas -o consensus.fas
+```
+
 ## Piping from Read Mapper
 Because ViralConsensus does not require reads to be sorted, data can be piped directly from the read mapper to ViralConsensus to avoid unnecessary disk I/O (and thus improve speed):
 

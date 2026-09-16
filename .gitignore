@@ -9,8 +9,15 @@ viral_consensus_debug
 
 # output files
 *.json
+*.json.gz
 *.tsv
+*.tsv.gz
 *.fa
+*.fa.gz
+*.fas
+*.fas.gz
+*.fasta
+*.fasta.gz
 
 # Prerequisites
 *.d

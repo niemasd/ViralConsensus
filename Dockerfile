@@ -3,7 +3,7 @@ FROM alpine:latest
 
 # install ViralConsensus
 RUN apk update && \
-    apk add --no-cache bash bzip2-dev g++ make xz-dev zlib-dev && \
+    apk add --no-cache bash bzip2-dev curl-dev g++ make xz-dev zlib-dev && \
     wget -qO- "https://github.com/samtools/htslib/releases/download/1.24/htslib-1.24.tar.bz2" | tar -xj && \
     cd htslib-* && \
     ./configure && \

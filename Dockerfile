@@ -9,11 +9,10 @@ RUN apk update && \
     ./configure && \
     make install && \
     cd .. && \
-    rm -rf htslib-* && \
     wget -qO- "https://github.com/niemasd/ViralConsensus/archive/refs/heads/main.tar.gz" | tar -zx && \
     cd ViralConsensus-* && \
     make && \
     mv viral_consensus /usr/local/bin/ && \
     cd .. && \
-    rm -rf ViralConsensus-*
+    rm -rf htslib-* ViralConsensus-*
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"

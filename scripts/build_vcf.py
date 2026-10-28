@@ -104,8 +104,12 @@ def build_vcf(vc_params, pos_counts, ins_counts, ref_ID, ref_seq, sample_name='s
         ref_nuc = ref_seq[pos]
         ref_depth = curr_pos_counts[ref_nuc]
         pos_depth = sum(curr_pos_counts.values())
-        pos_best_count, pos_best = max((curr_pos_counts[s],s) for s in 'ACGT-')
-        if (pos_depth < vc_params['min_depth']) or (pos_best_count < (pos_depth * vc_params['min_freq'])):
+        # same rule as compute_consensus in count.cpp: first strictly-greater count wins, in the order A, C, G, T, -
+        pos_best_count, pos_best = 0, 'N'
+        for s in 'ACGT-':
+            if curr_pos_counts[s] > pos_best_count:
+                pos_best_count, pos_best = curr_pos_counts[s], s
+        if (pos_depth < vc_params['min_depth']) or not (pos_best_count > (pos_depth * vc_params['min_freq'])):
             pos_best_count = pos_depth
             pos_best = 'N'
         if pos_best == '-':
@@ -116,7 +120,7 @@ def build_vcf(vc_params, pos_counts, ins_counts, ref_ID, ref_seq, sample_name='s
             curr_ins_counts = ins_counts[pos+1]
             curr_ins_depth = sum(curr_ins_counts.values())
             best_ins_count, best_ins_str = max((c,s) for s, c in curr_ins_counts.items())
-            if (best_ins_str != '') and (curr_ins_depth >= vc_params['min_depth']) and (best_ins_count >= (curr_ins_depth * vc_params['min_freq'])):
+            if (best_ins_str != '') and (curr_ins_depth >= vc_params['min_depth']) and (best_ins_count > (curr_ins_depth * vc_params['min_freq'])):
                 pos_depth = min(pos_depth, curr_ins_depth)
                 pos_best_count = min(pos_best_count, best_ins_count)
                 pos_best += best_ins_str

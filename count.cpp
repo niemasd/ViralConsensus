@@ -193,7 +193,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
                         // increment the count of the base at this position
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
 
-                        // increment the insertion count of "" (no insertion) after this position (except the last position)
+                        // increment the insertion count of "" (no insertion) before this position
                         if(!skip_empty) {
                             ins_counts_it = counts.ins_counts.find(pos);
                             if(ins_counts_it == counts.ins_counts.end()) {

@@ -12,7 +12,7 @@ RUN apk update && \
     wget -qO- "https://github.com/niemasd/ViralConsensus/archive/refs/heads/main.tar.gz" | tar -zx && \
     cd ViralConsensus-* && \
     make && \
-    mv viral_consensus /usr/local/bin/ && \
+    mv scripts/build_vcf.py viral_consensus /usr/local/bin/ && \
     cd .. && \
     rm -rf htslib-* ViralConsensus-*
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"

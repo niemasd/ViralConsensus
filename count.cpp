@@ -173,9 +173,11 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
         }
 
         // iterate over aligned pairs: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2007-L2064
+        bool prev_ins = false;
         for(k = 0; k < n_cigar; ++k) {
             op = cigar_p[k] & BAM_CIGAR_MASK;
             l = cigar_p[k] >> BAM_CIGAR_SHIFT;
+            bool was_ins = prev_ins; prev_ins = false;
 
             // if soft-clipped, skip
             if(op == BAM_CSOFT_CLIP) {
@@ -184,7 +186,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
 
             // handle match/mismatch: https://github.com/pysam-developers/pysam/blob/cb3443959ca0a4d93f646c078f31d5966c0b82eb/pysam/libcalignedsegment.pyx#L2014-L2024
             else if(op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF) {
-                tmp_uint32 = pos + l;
+                tmp_uint32 = pos + l; bool skip_empty = was_ins;
                 while(pos < tmp_uint32) {
                     curr_base_qual = qqual[qpos];
                     if(curr_base_qual >= user_args.min_qual && (!primer_trim || (!is_reverse && pos >= min_max_primer_inds[src->core.pos].first.second) || (is_reverse && pos < min_max_primer_inds[src->core.pos].second.first))) {
@@ -192,7 +194,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
                         ++counts.pos_counts[pos][BASE_TO_NUM[(int)qseq[qpos]]];
 
                         // increment the insertion count of "" (no insertion) after this position (except the last position)
-                        if(pos < tmp_uint32) {
+                        if(!skip_empty) {
                             ins_counts_it = counts.ins_counts.find(pos);
                             if(ins_counts_it == counts.ins_counts.end()) {
                                 ins_counts_it = counts.ins_counts.emplace(pos, std::unordered_map<std::string, COUNT_T>()).first;
@@ -204,7 +206,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
                             ++(ins_counts_pos_it->second);
                         }
                     }
-                    ++qpos; ++pos;
+                    ++qpos; ++pos; skip_empty = false;
                 }
             }
 
@@ -221,6 +223,7 @@ counts_t compute_counts(args_t const & user_args, std::string const & ref, std::
                     curr_ins.push_back(qseq[qpos++]);
                 }
                 if(min_ins_qual >= user_args.min_qual) {
+                    prev_ins = true;
                     ins_counts_it = counts.ins_counts.find(pos);
                     if(ins_counts_it == counts.ins_counts.end()) {
                         ins_counts_it = counts.ins_counts.emplace(pos, std::unordered_map<std::string, COUNT_T>()).first;
